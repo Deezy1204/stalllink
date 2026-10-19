@@ -1,0 +1,165 @@
+@import "tailwindcss";
+
+/* StallLink palette (matches the mobile app's AppColors). */
+@theme {
+  --color-brand: #ba0036;
+  --color-brand-600: #9e002e;
+  --color-brand-50: #ffe6e8;
+  --color-ink: #141b2b;
+  --color-ink-2: #3f4555;
+  --color-ink-3: #7a7f8c;
+  --color-line: #e6e8ee;
+  --color-surface: #f8f9fc;
+  --color-surface-2: #f0f2f7;
+  --color-mint-100: #d9f5e9;
+  --color-mint-600: #1f9d6b;
+  --color-mint-800: #0f5c3e;
+
+  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+
+  --animate-fade-in: fade-in 0.2s ease-out both;
+  --animate-rise: rise 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+}
+
+html,
+body {
+  background: var(--color-surface);
+  color: var(--color-ink);
+}
+
+/* Staggered entrance for lists: set --i on each item. */
+.stagger > * {
+  animation: rise 0.36s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(var(--i, 0) * 35ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+  /* Icons rest instead of flickering through very short loops. */
+  .ai, .ai * { animation: none !important; }
+}
+
+/* ---- Animated icons (components/icons.tsx) -----------------------------------------
+   Each icon class names a motion. It plays on hover (or keyboard focus) of the icon or
+   of its nearest `.group`, once when [data-play] is set, on repeat with [data-loop], and every
+   icon can draw itself in with [data-draw]. Parts stagger with --d. */
+
+/* Numbered pins on a shop's locations map (components/Locations.tsx); the main shop is solid. */
+.loc-pin {
+  display: flex; align-items: center; justify-content: center; width: 30px; height: 30px;
+  border-radius: 50% 50% 50% 0; transform: rotate(-45deg); background: white; border: 2.5px solid var(--color-brand);
+  color: var(--color-brand); font: 800 12px/1 var(--font-sans); box-shadow: 0 4px 10px rgba(20, 27, 43, 0.25);
+  animation: loc-drop 0.55s cubic-bezier(0.34, 1.45, 0.64, 1) both;
+}
+.loc-pin > b { transform: rotate(45deg); }
+.loc-pin-main { background: var(--color-brand); color: white; }
+@keyframes loc-drop { from { opacity: 0; translate: 0 -18px; } to { opacity: 1; translate: 0 0; } }
+
+/* The map picker's pin drops in when the map opens. */
+.map-pin { animation: pin-drop 0.6s cubic-bezier(0.34, 1.45, 0.64, 1) 0.25s both; transform-origin: 50% 100%; }
+@keyframes pin-drop { 0% { transform: translateY(-28px); opacity: 0; } 60% { transform: translateY(0) scale(1.08, 0.9); opacity: 1; } 100% { transform: translateY(0) scale(1); } }
+
+/* Not inherited, so a part without a motion of its own stays still. */
+@property --a { syntax: "*"; inherits: false; }
+@property --e { syntax: "*"; inherits: false; }
+@property --d { syntax: "*"; inherits: false; }
+
+.ai { overflow: visible; --ai-bounce: cubic-bezier(0.34, 1.45, 0.64, 1); }
+.ai * { transform-box: fill-box; transform-origin: center; }
+.ai .ai-line, .ai .ai-tick { stroke-dasharray: 1; }
+.ai .ai-beam { opacity: 0; }
+
+/* Draw in: every line traces itself, one after another. */
+.ai[data-draw] :is(path, circle, rect, ellipse, polygon) { stroke-dasharray: 1; animation: ai-draw 0.9s cubic-bezier(0.65, 0, 0.35, 1) both; }
+.ai[data-draw] > :nth-child(2), .ai[data-draw] > :nth-child(2) * { animation-delay: 0.12s; }
+.ai[data-draw] > :nth-child(3), .ai[data-draw] > :nth-child(3) * { animation-delay: 0.24s; }
+.ai[data-draw] > :nth-child(n + 4), .ai[data-draw] > :nth-child(n + 4) * { animation-delay: 0.36s; }
+@keyframes ai-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+
+/* Triggers. --a names the motion of the svg (or of a part); motions finish in the first
+   half of each keyframe list, so a loop rests between rounds. */
+:is(.group:hover, .group:focus-within) .ai :is([class*="ai-"]), .ai:hover :is([class*="ai-"]), .ai[data-play] :is([class*="ai-"]) {
+  animation: var(--a, none) 1.2s var(--e, ease-in-out) var(--d, 0s) both;
+}
+:is(.group:hover, .group:focus-within) .ai, .ai:hover, .ai[data-play] { animation: var(--a, none) 1.2s var(--e, ease-in-out) both; }
+.ai.ai[data-loop], .ai.ai[data-loop] :is([class*="ai-"]) { animation: var(--a, none) 2.6s var(--e, ease-in-out) var(--d, 0s) infinite both; }
+
+/* Which motion each icon (and part) uses. */
+.ai-tiles .ai-tile { --a: ai-pop; --e: var(--ai-bounce); }
+.ai-sway { --a: ai-hop; transform-origin: 50% 100%; }
+.ai-sway .ai-awning { --a: ai-awning; transform-origin: 50% 0; }
+.ai-sway .ai-door { --a: ai-door; transform-origin: 50% 100%; }
+.ai-users .ai-back { --a: ai-slide-in; }
+.ai-users .ai-head, .ai-user .ai-head { --a: ai-nod; }
+.ai-receipt { --a: ai-wobble; }
+.ai-receipt .ai-line, .ai-checkmark .ai-tick { --a: ai-trace; }
+.ai-checkmark { --a: ai-pulse; }
+.ai-plusbox .ai-plus, .ai-turn { --a: ai-turn; --e: var(--ai-bounce); }
+.ai-book { --a: ai-lift; }
+.ai-book .ai-page { --a: ai-slide-in; }
+.ai-scan .ai-corners { --a: ai-squeeze; }
+.ai-scan .ai-beam { --a: ai-beam; }
+.ai-box .ai-lid, .ai-gift .ai-lid { --a: ai-lid; }
+.ai-chart .ai-bar, .ai-bank .ai-col { --a: ai-grow; --e: var(--ai-bounce); transform-origin: 50% 100%; }
+.ai-bell { --a: ai-ring; transform-origin: 50% 12%; }
+.ai-bell .ai-clapper { --a: ai-clapper; }
+.ai-menu .ai-l { --a: ai-wave; }
+.ai-search { --a: ai-peek; }
+.ai-updown .ai-up { --a: ai-up; }
+.ai-updown .ai-down { --a: ai-down; }
+.ai-camera { --a: ai-wobble; }
+.ai-camera .ai-lens { --a: ai-shutter; }
+.ai-bounce { --a: ai-hop; transform-origin: 50% 100%; }
+.ai-calendar .ai-ring { --a: ai-nod; }
+.ai-calendar .ai-dot { --a: ai-pop; --e: var(--ai-bounce); }
+.ai-shake { --a: ai-shake; }
+.ai-hourglass { --a: ai-flip; }
+.ai-cart { --a: ai-roll; }
+.ai-tilt { --a: ai-wobble; }
+.ai-cash { --a: ai-roll; }
+.ai-cash .ai-coin { --a: ai-coin; }
+.ai-mail .ai-flap { --a: ai-flap; transform-origin: 50% 0; }
+.ai-sparkles .ai-star { --a: ai-twinkle; }
+.ai-globe .ai-meridian { --a: ai-spin-y; }
+.ai-verified .ai-seal { --a: ai-turn45; }
+.ai-verified .ai-tick { --a: ai-trace; --d: 120ms; }
+
+@keyframes ai-pop { 0% { transform: scale(0.35); opacity: 0.3; } 28% { transform: scale(1.14); opacity: 1; } 42%, 100% { transform: scale(1); opacity: 1; } }
+@keyframes ai-pulse { 0%, 50%, 100% { transform: scale(1); } 14% { transform: scale(0.86); } 28% { transform: scale(1.08); } 40% { transform: scale(1); } }
+@keyframes ai-hop { 0%, 50%, 100% { transform: translateY(0) scale(1, 1); } 14% { transform: translateY(-3.5px) scale(0.95, 1.06); } 28% { transform: translateY(0) scale(1.07, 0.92); } 38% { transform: translateY(-0.8px) scale(1, 1); } }
+@keyframes ai-awning { 0%, 50%, 100% { transform: rotate(0); } 10% { transform: rotate(-7deg); } 22% { transform: rotate(5deg); } 34% { transform: rotate(-2deg); } 44% { transform: rotate(0); } }
+@keyframes ai-door { 0%, 50%, 100% { transform: scaleY(1); } 18% { transform: scaleY(0.55); } 34% { transform: scaleY(1.06); } 44% { transform: scaleY(1); } }
+@keyframes ai-slide-in { 0% { transform: translateX(-4px); opacity: 0; } 30% { transform: translateX(0.6px); opacity: 1; } 42%, 100% { transform: translateX(0); opacity: 1; } }
+@keyframes ai-nod { 0%, 50%, 100% { transform: translateY(0); } 14% { transform: translateY(-2.2px); } 28% { transform: translateY(0.6px); } 38% { transform: translateY(0); } }
+@keyframes ai-wobble { 0%, 50%, 100% { transform: rotate(0); } 12% { transform: rotate(-10deg); } 24% { transform: rotate(7deg); } 34% { transform: rotate(-3deg); } 42% { transform: rotate(0); } }
+@keyframes ai-trace { 0% { stroke-dashoffset: 1; } 38%, 100% { stroke-dashoffset: 0; } }
+@keyframes ai-turn { 0% { transform: rotate(0); } 38%, 100% { transform: rotate(90deg); } }
+@keyframes ai-turn45 { 0% { transform: rotate(0); } 40%, 100% { transform: rotate(45deg); } }
+@keyframes ai-lift { 0%, 50%, 100% { transform: translateY(0) rotate(0); } 18% { transform: translateY(-2px) rotate(-4deg); } 34% { transform: translateY(0) rotate(1deg); } 44% { transform: rotate(0); } }
+@keyframes ai-squeeze { 0%, 50%, 100% { transform: scale(1); } 18% { transform: scale(0.82); } 32% { transform: scale(1.05); } 42% { transform: scale(1); } }
+@keyframes ai-beam { 0% { transform: translateY(-7px); opacity: 0; } 6% { opacity: 1; } 40% { transform: translateY(7px); opacity: 1; } 46%, 100% { transform: translateY(7px); opacity: 0; } }
+@keyframes ai-lid { 0%, 50%, 100% { transform: translateY(0) rotate(0); } 16% { transform: translateY(-3.2px) rotate(-8deg); } 30% { transform: translateY(-0.4px) rotate(2deg); } 40% { transform: translateY(0) rotate(0); } }
+@keyframes ai-grow { 0% { transform: scaleY(0.1); } 30% { transform: scaleY(1.14); } 42%, 100% { transform: scaleY(1); } }
+@keyframes ai-ring { 0%, 50%, 100% { transform: rotate(0); } 7% { transform: rotate(17deg); } 15% { transform: rotate(-15deg); } 23% { transform: rotate(10deg); } 31% { transform: rotate(-6deg); } 39% { transform: rotate(3deg); } 45% { transform: rotate(0); } }
+@keyframes ai-clapper { 0%, 50%, 100% { transform: translateX(0); } 10% { transform: translateX(-1.6px); } 19% { transform: translateX(1.6px); } 28% { transform: translateX(-1px); } 37% { transform: translateX(0.5px); } 45% { transform: translateX(0); } }
+@keyframes ai-wave { 0%, 50%, 100% { transform: translateX(0); } 14% { transform: translateX(3px); } 28% { transform: translateX(-1px); } 38% { transform: translateX(0); } }
+@keyframes ai-peek { 0%, 50%, 100% { transform: translate(0, 0); } 12% { transform: translate(-1.6px, -1.6px); } 24% { transform: translate(1.6px, -0.8px); } 36% { transform: translate(-0.8px, 1.2px); } 44% { transform: translate(0, 0); } }
+@keyframes ai-up { 0%, 50%, 100% { transform: translateY(0); } 16% { transform: translateY(-2.2px); } 30% { transform: translateY(0.4px); } 40% { transform: translateY(0); } }
+@keyframes ai-down { 0%, 50%, 100% { transform: translateY(0); } 16% { transform: translateY(2.2px); } 30% { transform: translateY(-0.4px); } 40% { transform: translateY(0); } }
+@keyframes ai-shutter { 0%, 50%, 100% { transform: scale(1); } 14% { transform: scale(0.4); } 28% { transform: scale(1.18); } 40% { transform: scale(1); } }
+@keyframes ai-shake { 0%, 50%, 100% { transform: translateX(0); } 8% { transform: translateX(-2px); } 16% { transform: translateX(2px); } 24% { transform: translateX(-1.6px); } 32% { transform: translateX(1.2px); } 40% { transform: translateX(-0.5px); } 46% { transform: translateX(0); } }
+@keyframes ai-flip { 0% { transform: rotate(0); } 40%, 50% { transform: rotate(180deg); } 90%, 100% { transform: rotate(360deg); } }
+@keyframes ai-roll { 0%, 50%, 100% { transform: translateX(0); } 18% { transform: translateX(2.6px); } 32% { transform: translateX(-1px); } 42% { transform: translateX(0); } }
+@keyframes ai-coin { 0%, 50%, 100% { transform: scaleX(1); } 14% { transform: scaleX(0.1); } 28% { transform: scaleX(1); } 36% { transform: scaleX(0.5); } 44% { transform: scaleX(1); } }
+@keyframes ai-flap { 0%, 50%, 100% { transform: scaleY(1); } 18% { transform: scaleY(-0.55); } 32% { transform: scaleY(1.1); } 42% { transform: scaleY(1); } }
+@keyframes ai-twinkle { 0%, 50%, 100% { transform: scale(1); opacity: 1; } 16% { transform: scale(0.3); opacity: 0.4; } 30% { transform: scale(1.25); opacity: 1; } 40% { transform: scale(1); } }
+@keyframes ai-spin-y { 0%, 50%, 100% { transform: scaleX(1); } 15% { transform: scaleX(0.05); } 30% { transform: scaleX(-1); } 45% { transform: scaleX(1); } }
