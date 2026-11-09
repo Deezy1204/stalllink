@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
@@ -23,7 +24,7 @@ import {
   ZIM_CITIES,
 } from "@/lib/catalog";
 import { saveShop } from "@/lib/merchant";
-import { paymentTitle, type Branch, type DayHours, type PaymentOption, type ShopDoc } from "@/lib/types";
+import { isPro, paymentTitle, usd, type Branch, type DayHours, type PaymentOption, type ShopDoc } from "@/lib/types";
 import { MapPicker, PinTile } from "./MapPicker";
 import { useMerchant } from "./MerchantData";
 import { PhotoSlots, usePhotoUpload } from "./Photos";
@@ -49,7 +50,7 @@ interface ShopDraft {
   lng: number | null;
 }
 
-const draftKey = (uid: string, shopId: string | null) => `stalllink.draft.shop.${uid}.${shopId ?? "new"}`;
+const draftKey = (uid: string, shopId: string | null) => `localink.draft.shop.${uid}.${shopId ?? "new"}`;
 
 function fromShop(s: ShopDoc | null, phone: string): ShopDraft {
   return {
@@ -89,7 +90,7 @@ function Section({ title, subtitle, children, error }: { title: string; subtitle
 export function ShopForm({ shop }: { shop: ShopDoc | null }) {
   const router = useRouter();
   const toast = useToast();
-  const { user, profile, selectShop } = useMerchant();
+  const { user, profile, selectShop, config } = useMerchant();
   const { upload, progress } = usePhotoUpload();
   const [f, setF] = useState<ShopDraft>(() => fromShop(shop, profile.phone));
   const [restored, setRestored] = useState(false);
@@ -136,9 +137,10 @@ export function ShopForm({ shop }: { shop: ShopDoc | null }) {
     (f.lat == null || f.lng == null) && "your map pin",
     !f.categories.length && "at least one category",
     !f.week.some((d) => d.open) && "opening hours",
-    !f.payments.length && "how buyers pay you",
   ].filter(Boolean) as string[];
-  const done = 6 - missing.length;
+  const done = 5 - missing.length;
+  // Only Pro shops take payments themselves; Basic shops are paid through Localink.
+  const pro = isPro(shop);
   const rate = Number(f.rate);
   const fee = Number(f.fee);
   const err = {
@@ -234,9 +236,9 @@ export function ShopForm({ shop }: { shop: ShopDoc | null }) {
           <h1 className="text-2xl font-extrabold tracking-tight">{shop ? "Shop settings" : "Set up a shop"}</h1>
           <p className="text-sm text-ink-3">{shop ? "Keep your shop details up to date." : "Fill in the parts below, then publish."}</p>
         </div>
-        <p className="text-lg font-extrabold text-brand">{done}/6</p>
+        <p className="text-lg font-extrabold text-brand">{done}/5</p>
       </div>
-      <div className="h-2 overflow-hidden rounded-full bg-surface-2"><div className="h-full rounded-full bg-brand transition-all duration-500" style={{ width: `${(done / 6) * 100}%` }} /></div>
+      <div className="h-2 overflow-hidden rounded-full bg-surface-2"><div className="h-full rounded-full bg-brand transition-all duration-500" style={{ width: `${(done / 5) * 100}%` }} /></div>
       <p className="mt-1.5 text-xs text-ink-3">Saved on this device as you type</p>
       {restored && (
         <p className="mt-3 flex items-center justify-between gap-3 rounded-2xl bg-mint-100 px-4 py-2.5 text-sm text-mint-800">
@@ -331,20 +333,36 @@ export function ShopForm({ shop }: { shop: ShopDoc | null }) {
           <p className="mt-2 text-xs text-ink-3">Buyers see: {hoursSummary(f.week) || "—"}</p>
         </Section>
 
-        <Section title="How buyers pay you" subtitle="StallLink does not hold money. Buyers pay you directly and upload proof; you confirm it." error={show(!f.payments.length ? "Add at least one way for buyers to pay you." : null)}>
-          <div className="space-y-2">
+        <Section
+          title="How buyers pay you"
+          subtitle={
+            pro
+              ? "Your own accounts: buyers pay you and upload proof, you confirm it. They can also pay through Localink (online or credits)."
+              : "Buyers pay through Localink: online, by transfer or with credits. Localink pays your earnings out to you."
+          }
+        >
+          {!pro && (
+            <Link href={shop ? "/merchant/plan" : "#"} className="block rounded-2xl border border-accent/40 bg-accent-50 p-4 text-sm text-accent-800 hover:bg-accent/15">
+              <b className="block">Take payments yourself with Pro</b>
+              On Basic, a {config.serviceFeePercent}% service fee is added for buyers and you are paid out weekly. Pro ({usd(config.proMonthly)}/month) lets buyers pay your own accounts, with no fee and daily payouts.
+              {shop ? " ›" : " Publish your shop first, then choose a plan."}
+            </Link>
+          )}
+          {!pro && f.payments.length > 0 && <p className="mb-2 mt-4 text-xs font-semibold text-ink-3">Saved for when you are on Pro (buyers do not see them now):</p>}
+          <div className={`space-y-2 ${pro ? "" : "opacity-60"}`}>
             {f.payments.map((p) => (
               <div key={p.id} className="flex items-center gap-3 rounded-2xl border border-line p-3">
-                <button type="button" className="min-w-0 flex-1 text-left" onClick={() => setPayment(p)}>
+                <button type="button" className="min-w-0 flex-1 text-left" disabled={!pro} onClick={() => setPayment(p)}>
                   <span className="block text-sm font-bold">{paymentTitle(p)}</span>
                   <span className="block truncate text-xs text-ink-3">{paymentSummary(p)}</span>
                 </button>
-                <button type="button" className="text-sm font-semibold text-brand hover:underline" onClick={() => setPayment(p)}>Edit</button>
+                {pro && <button type="button" className="text-sm font-semibold text-brand hover:underline" onClick={() => setPayment(p)}>Edit</button>}
                 <button type="button" className="text-sm font-semibold text-red-700 hover:underline" onClick={() => set({ payments: f.payments.filter((x) => x.id !== p.id) })}>Remove</button>
               </div>
             ))}
           </div>
-          <Button variant="secondary" className="mt-3" onClick={() => setPayment("new")}>{f.payments.length ? "+ Add another payment method" : "+ Add payment method"}</Button>
+          {pro && <Button variant="secondary" className="mt-3" onClick={() => setPayment("new")}>{f.payments.length ? "+ Add another payment method" : "+ Add payment method"}</Button>}
+          {shop && <Link href="/merchant/earnings" className="mt-3 block text-sm font-semibold text-brand hover:underline">Where Localink pays you (payouts) ›</Link>}
         </Section>
 
         <Section title="Branches" subtitle="Other places customers can collect from (optional).">
@@ -422,7 +440,20 @@ export function ShopForm({ shop }: { shop: ShopDoc | null }) {
   );
 }
 
-function PaymentForm({ existing, defaultAccountName, onClose, onSave }: { existing: PaymentOption | null; defaultAccountName: string; onClose: () => void; onSave: (p: PaymentOption) => void }) {
+/** Payment details: a Pro shop's account buyers pay into, or with [payout] where Localink pays the shop. */
+export function PaymentForm({
+  existing,
+  defaultAccountName,
+  onClose,
+  onSave,
+  payout = false,
+}: {
+  existing: PaymentOption | null;
+  defaultAccountName: string;
+  onClose: () => void;
+  onSave: (p: PaymentOption) => void;
+  payout?: boolean;
+}) {
   const [type, setType] = useState<PaymentOption["type"]>(existing?.type ?? "ecocash");
   const [name, setName] = useState(existing?.name ?? "");
   const [accountName, setAccountName] = useState(existing?.accountName ?? defaultAccountName);
@@ -430,7 +461,7 @@ function PaymentForm({ existing, defaultAccountName, onClose, onSave }: { existi
   const [instructions, setInstructions] = useState(existing?.instructions ?? "");
   const [tried, setTried] = useState(false);
   const needsName = type === "bank" || type === "other";
-  const err = { name: needsName && !name.trim() ? "Enter the name" : null, accountName: !accountName.trim() ? "Enter the account name" : null, number: !number.trim() ? "Enter the number buyers pay to" : null };
+  const err = { name: needsName && !name.trim() ? "Enter the name" : null, accountName: !accountName.trim() ? "Enter the account name" : null, number: !number.trim() ? (payout ? "Enter the account number" : "Enter the number buyers pay to") : null };
 
   function save() {
     setTried(true);
@@ -442,10 +473,10 @@ function PaymentForm({ existing, defaultAccountName, onClose, onSave }: { existi
     <Modal
       open
       onClose={onClose}
-      title={existing ? "Edit payment method" : "Add payment method"}
-      footer={<><Button variant="secondary" onClick={onClose}>Cancel</Button><Button onClick={save}>Save payment method</Button></>}
+      title={payout ? "Where Localink pays you" : existing ? "Edit payment method" : "Add payment method"}
+      footer={<><Button variant="secondary" onClick={onClose}>Cancel</Button><Button onClick={save}>{payout ? "Save payout account" : "Save payment method"}</Button></>}
     >
-      <p className="mb-3 text-sm text-ink-3">Buyers see these details at checkout and pay you directly.</p>
+      <p className="mb-3 text-sm text-ink-3">{payout ? "Localink sends your earnings to this account. Only you and Localink see it." : "Buyers see these details at checkout and pay you directly."}</p>
       <p className="mb-2 text-sm font-semibold">Type</p>
       <div className="mb-4 flex flex-wrap gap-2">{PAYMENT_TYPES.map((t) => <Pill key={t.id} selected={type === t.id} onClick={() => setType(t.id)}>{t.label}</Pill>)}</div>
       <div className="space-y-3">
@@ -458,7 +489,7 @@ function PaymentForm({ existing, defaultAccountName, onClose, onSave }: { existi
             error={tried ? err.name : null}
           />
         )}
-        <Input label="Account name" value={accountName} onChange={(e) => setAccountName(e.target.value)} placeholder="Name buyers will see when paying" error={tried ? err.accountName : null} />
+        <Input label="Account name" value={accountName} onChange={(e) => setAccountName(e.target.value)} placeholder={payout ? "Name on the account" : "Name buyers will see when paying"} error={tried ? err.accountName : null} />
         <Input label={paymentNumberLabel(type)} value={number} onChange={(e) => setNumber(e.target.value)} placeholder={paymentNumberHint(type)} error={tried ? err.number : null} />
         <Textarea label="Instructions (optional)" value={instructions} onChange={(e) => setInstructions(e.target.value)} placeholder="e.g. Use your order number as the reference" />
       </div>

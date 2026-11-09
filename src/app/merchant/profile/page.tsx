@@ -85,7 +85,7 @@ export default function ProfilePage() {
                 <ShopThumb src={s.bannerAsset} name={s.name} className="size-12" />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate font-bold">{s.name}</span>
-                  <span className="block truncate text-sm text-ink-3">{s.city} · {s.verified ? "Verified" : "Awaiting verification"}{s.suspended ? " · Paused by StallLink" : ""}</span>
+                  <span className="block truncate text-sm text-ink-3">{s.city} · {s.verified ? "Verified" : "Awaiting verification"}{s.suspended ? " · Paused by Localink" : ""}</span>
                 </span>
                 {s.id === shop?.id && <Badge tone="brand">Active</Badge>}
               </Card>

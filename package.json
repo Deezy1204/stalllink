@@ -1,8 +1,8 @@
 {
-  "name": "stalllink-admin",
+  "name": "localink-admin",
   "version": "1.0.0",
   "private": true,
-  "description": "StallLink merchant and admin console (web). Same Firebase project as the mobile app.",
+  "description": "Localink merchant and admin console (web). Same Firebase project as the mobile app.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

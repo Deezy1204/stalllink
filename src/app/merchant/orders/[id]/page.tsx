@@ -11,7 +11,7 @@ import { PaymentCard, Timeline } from "@/components/merchant/OrderBits";
 import { Button, Card, Empty, Spinner, useToast } from "@/components/ui";
 import { dayMonthYear, digitsOnly, pickupPlace, relativeDay, timeOfDay } from "@/lib/catalog";
 import { download, receiptPdf } from "@/lib/reports";
-import { orderTotal, paymentTitle, statusLabel, usd } from "@/lib/types";
+import { orderShare, orderTotal, paymentTitle, statusLabel, usd, viaLocalink } from "@/lib/types";
 
 /** One order as the shop sees it (the app's order tracking screen in Merchant mode). */
 export default function MerchantOrderDetail() {
@@ -35,10 +35,10 @@ export default function MerchantOrderDetail() {
     setBusy(true);
     try {
       const blob = await receiptPdf(o!, shop);
-      const name = `StallLink-receipt-${o!.id}.pdf`;
+      const name = `Localink-receipt-${o!.id}.pdf`;
       const file = new File([blob], name, { type: "application/pdf" });
       if (share && navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ files: [file], title: `StallLink order #${o!.id}`, text: `StallLink order #${o!.id} · ${usd(orderTotal(o!))} · ${shopName}` });
+        await navigator.share({ files: [file], title: `Localink order #${o!.id}`, text: `Localink order #${o!.id} · ${usd(orderTotal(o!))} · ${shopName}` });
       } else {
         download(blob, name);
         toast("Receipt saved.");
@@ -102,9 +102,12 @@ export default function MerchantOrderDetail() {
             <dl className="mt-3 grid grid-cols-[1fr_auto] gap-y-1 border-t border-line pt-3 text-sm">
               <dt className="text-ink-3">Voucher</dt><dd className="font-mono">{o.voucherCode}</dd>
               <dt className="text-ink-3">Subtotal</dt><dd>{usd(o.items.reduce((s, i) => s + i.qty * i.unitPrice, 0))}</dd>
+              {!!o.discount && (<><dt className="text-ink-3">{o.promoLabel || "Shop offer"}</dt><dd>−{usd(o.discount)}</dd></>)}
               {!!o.runnerFee && (<><dt className="text-ink-3">Delivery</dt><dd>{usd(o.runnerFee)}</dd></>)}
+              {!!o.serviceFee && (<><dt className="text-ink-3">Localink service fee (paid by the buyer)</dt><dd>{usd(o.serviceFee)}</dd></>)}
               <dt className="text-ink-3">Payment</dt><dd>{paymentTitle(o.payment)}</dd>
               <dt className="font-bold">Total</dt><dd className="text-lg font-extrabold text-brand">{usd(orderTotal(o))}</dd>
+              {(!!o.serviceFee || viaLocalink(o)) && (<><dt className="text-ink-3">Your sale</dt><dd className="font-semibold">{usd(orderShare(o))}</dd></>)}
             </dl>
           </Card>
 

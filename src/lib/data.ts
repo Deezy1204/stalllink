@@ -18,7 +18,8 @@ import {
 } from "firebase/firestore";
 
 import { db } from "./firebase";
-import type { AdminDoc, InviteDoc, NominationDoc, OrderDoc, ShopDoc, UserDoc } from "./types";
+import { newestFirst, toReview } from "./reviews";
+import type { AdminDoc, InviteDoc, NominationDoc, OrderDoc, ReviewDoc, ShopDoc, UserDoc } from "./types";
 
 const date = (v: unknown): Date | null => (v instanceof Timestamp ? v.toDate() : null);
 
@@ -42,6 +43,8 @@ export function watchAdminData(
     nominations: (v: NominationDoc[]) => void;
     admins: (v: AdminDoc[]) => void;
     invites: (v: InviteDoc[]) => void;
+    shopReviews: (v: ReviewDoc[]) => void;
+    appReviews: (v: ReviewDoc[]) => void;
   },
   onError: (e: Error) => void,
 ): Unsubscribe {
@@ -62,6 +65,9 @@ export function watchAdminData(
     ),
     onSnapshot(collection(f, "admins"), (s) => on.admins(s.docs.map((d) => ({ uid: d.id, email: d.data().email ?? "", name: d.data().name ?? "", addedBy: d.data().addedBy ?? "", addedAt: date(d.data().addedAt) }))), onError),
     onSnapshot(collection(f, "adminInvites"), (s) => on.invites(s.docs.map((d) => ({ email: d.id, invitedBy: d.data().invitedBy ?? "", createdAt: date(d.data().createdAt) }))), onError),
+    // Hidden ones included: admins moderate them here.
+    onSnapshot(collection(f, "shopReviews"), (s) => on.shopReviews(s.docs.map((d) => toReview(d.id, d.data())).sort(newestFirst)), onError),
+    onSnapshot(collection(f, "appReviews"), (s) => on.appReviews(s.docs.map((d) => toReview(d.id, d.data())).sort(newestFirst)), onError),
   ];
   return () => subs.forEach((u) => u());
 }
@@ -90,6 +96,14 @@ export const deleteShop = (shopId: string) => deleteDoc(doc(db(), "shops", shopI
 export const setUserSuspended = (uid: string, suspended: boolean) => setDoc(doc(db(), "users", uid), { suspended }, { merge: true });
 
 export const setNominationStatus = (id: string, status: NominationDoc["status"]) => updateDoc(doc(db(), "shopNominations", id), { status });
+
+/** Which collection a review lives in: a shop's (`shopReviews`) or Localink's (`appReviews`). */
+const reviewCollection = (r: ReviewDoc) => (r.shopId ? "shopReviews" : "appReviews");
+
+/** Hidden reviews leave every public list and rating; their author still sees them. */
+export const setReviewHidden = (r: ReviewDoc, hidden: boolean) => updateDoc(doc(db(), reviewCollection(r), r.id), { hidden });
+
+export const deleteReview = (r: ReviewDoc) => deleteDoc(doc(db(), reviewCollection(r), r.id));
 
 /** Makes the account with [email] an admin, or invites the email. Returns a message. */
 export async function addAdmin(email: string, invitedBy: string): Promise<string> {

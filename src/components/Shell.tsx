@@ -6,32 +6,40 @@ import { useState, type ReactNode } from "react";
 
 import { useAdminData } from "./AdminData";
 import { useAuth } from "./AuthProvider";
+import { BrandHeader, BrandInline } from "./Brand";
 import { Icon, type IconName } from "./icons";
 
 export function Shell({ children }: { children: ReactNode }) {
   const path = usePathname();
   const { user, signOut } = useAuth();
-  const { shops, orders, nominations } = useAdminData();
+  const { shops, orders, nominations, shopReviews, appReviews, payouts, planPayments } = useAdminData();
   const [open, setOpen] = useState(false);
 
   const nav: { href: string; label: string; icon: IconName; count?: number }[] = [
     { href: "/", label: "Dashboard", icon: "dashboard" },
     { href: "/shops", label: "Shops", icon: "store", count: shops.filter((s) => !s.verified && !s.suspended).length },
     { href: "/users", label: "Users", icon: "users" },
-    { href: "/orders", label: "Orders", icon: "receipt", count: orders.filter((o) => o.paymentStatus === "proofSent").length },
+    { href: "/orders", label: "Orders", icon: "receipt" },
+    // Money sent to Localink: proofs to check (orders and Pro), and payouts to send.
+    {
+      href: "/payments",
+      label: "Payments to check",
+      icon: "cash",
+      count: orders.filter((o) => o.payTo === "localink" && o.paymentStatus === "proofSent").length + planPayments.filter((p) => p.status === "proofSent").length,
+    },
+    { href: "/payouts", label: "Payouts", icon: "bank", count: payouts.filter((p) => p.status === "pending").length },
     { href: "/requests", label: "Shop requests", icon: "plusSquare", count: nominations.filter((n) => n.status === "new").length },
+    // Low ratings from the last week, so problems surface quickly.
+    { href: "/reviews", label: "Reviews", icon: "star", count: [...shopReviews, ...appReviews].filter((r) => !r.hidden && r.rating <= 2 && Date.now() - r.updatedAt < 7 * 864e5).length },
     { href: "/admins", label: "Admins", icon: "shieldCheck" },
+    { href: "/settings", label: "Payment settings", icon: "sparkles" },
     { href: "/guide", label: "How it works", icon: "book" },
   ];
 
   const sidebar = (
     <nav className="flex h-full flex-col gap-1 p-4">
-      <div className="mb-6 flex items-center gap-3 px-2">
-        <div className="flex size-10 items-center justify-center rounded-2xl bg-brand text-lg font-black text-white shadow-lg shadow-brand/30">S</div>
-        <div>
-          <p className="font-extrabold text-brand">StallLink</p>
-          <p className="text-[11px] font-semibold uppercase tracking-widest text-ink-3">Admin</p>
-        </div>
+      <div className="mb-6 px-2">
+        <BrandHeader label="Admin" />
       </div>
       {nav.map((n) => {
         const active = n.href === "/" ? path === "/" : path.startsWith(n.href);
@@ -68,7 +76,7 @@ export function Shell({ children }: { children: ReactNode }) {
         <button onClick={() => setOpen(true)} className="group rounded-xl p-2 hover:bg-surface-2" aria-label="Menu">
           <Icon name="menu" strokeWidth={2} />
         </button>
-        <p className="font-extrabold text-brand">StallLink Admin</p>
+        <BrandInline label="Admin" />
       </header>
       {open && (
         <div className="fixed inset-0 z-40 lg:hidden" onClick={() => setOpen(false)}>

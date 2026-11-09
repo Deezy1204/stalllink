@@ -8,7 +8,7 @@ import { MerchantDataProvider } from "@/components/merchant/MerchantData";
 import { MerchantShell } from "@/components/merchant/MerchantShell";
 import { Spinner } from "@/components/ui";
 
-/** The merchant console: any signed-in StallLink account can run shops here, as in the app's Merchant mode. */
+/** The merchant console: any signed-in Localink account can run shops here, as in the app's Merchant mode. */
 export default function MerchantLayout({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
   const router = useRouter();

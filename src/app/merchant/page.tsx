@@ -7,13 +7,15 @@ import { LocationList, LocationsMap, shopPlaces } from "@/components/Locations";
 import { useMerchant } from "@/components/merchant/MerchantData";
 import { ShopThumb } from "@/components/merchant/MerchantShell";
 import { NoShop, OrderCard } from "@/components/merchant/OrderBits";
+import { RatingChip } from "@/components/Reviews";
 import { Card, Empty, PageHeader, Spinner } from "@/components/ui";
 import { monthKey } from "@/lib/catalog";
-import { orderTotal, usd } from "@/lib/types";
+import { promoHeadline } from "@/lib/money";
+import { isActive, isPro, orderShare, usd } from "@/lib/types";
 
 /** Merchant dashboard for the active shop (the app's Overview tab). */
 export default function MerchantOverview() {
-  const { shop, shopOrders, loaded, error, shops } = useMerchant();
+  const { shop, shopOrders, loaded, error, shops, appReview, wallet, config } = useMerchant();
 
   if (!loaded) return <div className="flex justify-center py-20"><Spinner /></div>;
   if (!shop) return <NoShop what="list products and receive orders" />;
@@ -21,9 +23,13 @@ export default function MerchantOverview() {
   const pending = shopOrders.filter((o) => o.status === "readyForPickup");
   const recent = shopOrders.filter((o) => o.status !== "readyForPickup").slice(0, 4);
   const thisMonth = shopOrders.filter((o) => o.status !== "cancelled" && monthKey(o.createdAt) === monthKey(Date.now()));
-  const sold = thisMonth.reduce((s, o) => s + orderTotal(o), 0);
+  // The shop's own takings: Localink's service fee is not the shop's revenue.
+  const sold = thisMonth.reduce((s, o) => s + orderShare(o), 0);
   const items = thisMonth.reduce((s, o) => s + o.items.reduce((a, i) => a + i.qty, 0), 0);
-  const toCheck = shopOrders.filter((o) => o.paymentStatus === "proofSent").length;
+  const toCheck = shopOrders.filter((o) => o.payTo !== "localink" && o.paymentStatus === "proofSent").length;
+  const pro = isPro(shop);
+  const deals = (shop.products ?? []).filter((p) => p.available !== false && isActive(p.discount)).length;
+  const promo = isActive(shop.promo) ? shop.promo! : null;
   const places = shopPlaces(shop);
   const products = shop.products ?? [];
   const low = products.filter((p) => p.stock <= 5).length;
@@ -59,9 +65,12 @@ export default function MerchantOverview() {
             <div className="min-w-0 flex-1">
               <p className="flex items-center gap-1.5 text-xl font-extrabold">
                 {shop.name}
-                {shop.verified && <span className="text-mint-600"><Icon name="verified" className="size-5" title="Verified by StallLink" play /></span>}
+                {shop.verified && <span className="text-mint-600"><Icon name="verified" className="size-5" title="Verified by Localink" play /></span>}
               </p>
               <p className="text-sm text-ink-3">{[shop.standNo, shop.suburb, shop.city].filter(Boolean).join(" · ")}</p>
+              <Link href="/merchant/reviews" className="mt-1 inline-flex rounded-lg hover:underline" title="See your reviews">
+                <RatingChip rating={shop.rating} count={shop.reviewCount} />
+              </Link>
               {shops.length > 1 && <p className="mt-1 text-xs font-semibold text-brand">{shops.length} shops · switch in the sidebar</p>}
             </div>
             <Link href="/merchant/shop" className="shrink-0 rounded-xl border border-line px-3 py-2 text-sm font-semibold hover:bg-surface-2">Edit shop</Link>
@@ -72,8 +81,8 @@ export default function MerchantOverview() {
       {(shop.suspended || !shop.verified) && (
         <p className={`mt-3 rounded-2xl px-4 py-3 text-sm ${shop.suspended ? "bg-red-50 text-red-800" : "bg-amber-50 text-amber-900"}`}>
           {shop.suspended
-            ? "StallLink has paused this shop, so buyers cannot see it. Contact support."
-            : "StallLink is checking this shop. Buyers can already order; the verified badge appears once it is approved."}
+            ? "Localink has paused this shop, so buyers cannot see it. Contact support."
+            : "Localink is checking this shop. Buyers can already order; the verified badge appears once it is approved."}
         </p>
       )}
 
@@ -99,9 +108,42 @@ export default function MerchantOverview() {
         ))}
       </div>
 
+      <div className="mt-3 grid gap-3 md:grid-cols-3">
+        <Link href="/merchant/earnings" className="group">
+          <Card className="h-full p-4 transition group-hover:-translate-y-0.5 group-hover:shadow-md">
+            <p className="text-xs font-semibold text-ink-3">Earnings with Localink</p>
+            <p className="mt-1 text-2xl font-extrabold">{usd(wallet?.balance ?? 0)}</p>
+            <p className="text-xs text-ink-3">{wallet?.pending ? `${usd(wallet.pending)} pending collection · ` : ""}paid out {pro ? "daily" : "weekly"}</p>
+          </Card>
+        </Link>
+        <Link href="/merchant/plan" className="group">
+          <Card className={`h-full p-4 transition group-hover:-translate-y-0.5 group-hover:shadow-md ${pro ? "" : "border-accent/40 bg-accent-50"}`}>
+            <p className="text-xs font-semibold text-ink-3">Plan</p>
+            <p className="mt-1 text-2xl font-extrabold">{pro ? "Pro" : "Basic"}</p>
+            <p className="text-xs text-ink-3">
+              {pro ? `Until ${new Date(shop.proUntil!).toLocaleDateString("en-GB", { day: "numeric", month: "short" })} · no service fee` : `Get Pro (${usd(config.proMonthly)}/month): no fee, your own payments ›`}
+            </p>
+          </Card>
+        </Link>
+        <Link href="/merchant/promotions" className="group">
+          <Card className="h-full p-4 transition group-hover:-translate-y-0.5 group-hover:shadow-md">
+            <p className="text-xs font-semibold text-ink-3">Discounts & offers</p>
+            <p className="mt-1 text-2xl font-extrabold">{deals} on sale</p>
+            <p className="truncate text-xs text-ink-3">{promo ? promoHeadline(promo) : "No shop offer running"}</p>
+          </Card>
+        </Link>
+      </div>
+
+      {appReview === null && (
+        <Link href="/merchant/feedback" className="group mt-3 flex items-center gap-3 rounded-2xl border border-accent/30 bg-accent-50 px-4 py-3 text-sm text-accent-800 hover:bg-accent/15">
+          <Icon name="star" className="size-5 shrink-0 text-accent" />
+          <span className="flex-1"><b>How is Localink working for you?</b> Rate and review it in a minute. ›</span>
+        </Link>
+      )}
+
       {toCheck > 0 && (
         <Link href="/merchant/orders?tab=proof" className="mt-3 block rounded-2xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900 hover:bg-amber-100">
-          {toCheck} payment{toCheck === 1 ? "" : "s"} to check. Open the order and confirm once the money is in. ›
+          {toCheck} payment{toCheck === 1 ? "" : "s"} to your accounts to check. Open the order and confirm once the money is in. ›
         </Link>
       )}
 

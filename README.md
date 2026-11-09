@@ -1,10 +1,10 @@
-# StallLink console (web)
+# Localink console (web)
 
-Next.js console for StallLink with two sides, on the same Firebase project and
-live data as the mobile app (`../stall_link`):
+Next.js console for Localink with two sides, on the same Firebase project and
+live data as the mobile app (`../Localink`):
 
 - **Merchant console** (`/merchant`): everything the app's Merchant mode does.
-  Any StallLink account can sign in; new merchants can create an account here.
+  Any Localink account can sign in; new merchants can create an account here.
 - **Admin console** (`/`): for accounts listed as admins. Includes **How it
   works** (`/guide`), a guide to the whole system with screenshots of the app.
 
@@ -22,6 +22,8 @@ merchant console; the sidebars link the two for admins who also run shops.
 | Revenue | Month by month, 6-month chart, **PDF and CSV** downloads |
 | Shop settings | Photos, details, **map pin**, categories, opening hours, payment methods, branches, delivery and Rand rate; add another shop |
 | Notifications | The same notifications as the app, live; opening one marks it read |
+| Reviews | What buyers say about the active shop: rating, star breakdown, every review |
+| Rate Localink | Rate and review Localink itself (one review, editable), and read everyone's reviews of it |
 | Profile | Name, phone, city, "Let people find me" |
 
 Notes:
@@ -43,6 +45,7 @@ Notes:
 | Users | Search/filter, **suspend / restore** accounts, **make admin** |
 | Orders | Search/filter by status and payment, order details, open the buyer's proof of payment |
 | Shop requests | Shops buyers recommended; mark contacted / onboarded / dismissed |
+| Reviews | Every review of a shop or of Localink; filter to 1–2 stars, **hide** (leaves public lists and ratings) or delete |
 | Admins | **Add admins by email** (existing account, or an invite the person claims on first sign-in), remove admins |
 | How it works | The whole system from sign-up to collection: who does what, when; statuses, notifications, rules, open questions |
 
@@ -50,8 +53,8 @@ The guide's phone pictures (`public/guide/app/*.png`) are rendered from the
 app with its demo data. To refresh them after changing the app:
 
 ```bash
-cd ../stall_link
-STALLLINK_SCREENSHOTS=1 flutter test test/docs_screenshots_test.dart   # PowerShell: $env:STALLLINK_SCREENSHOTS=1; flutter test …
+cd ../Localink
+LOCALINK_SCREENSHOTS=1 flutter test test/docs_screenshots_test.dart   # PowerShell: $env:LOCALINK_SCREENSHOTS=1; flutter test …
 ```
 
 ## Run it
@@ -68,10 +71,11 @@ For another project copy `.env.example` to `.env.local` and fill it in.
 
 ## One-time setup
 
-1. **Deploy the rules** from the app folder (they include the admin rules):
+1. **Deploy the rules and functions** from the app folder (the rules include
+   the admin and review rules; the functions keep shop ratings up to date):
    ```bash
-   cd ../stall_link
-   firebase deploy --only "firestore:rules,storage" --project stalllinkweb
+   cd ../Localink
+   firebase deploy --only "firestore:rules,storage,functions" --project stalllinkweb
    ```
    The first storage deploy asks to let Storage rules read Firestore; say yes
    (the shop that received an order needs it to see the payment proof).
@@ -91,4 +95,4 @@ For another project copy `.env.example` to `.env.local` and fill it in.
 
 Any Next.js host works (Vercel, Firebase App Hosting, a Node server with
 `npm start`). Set the six `NEXT_PUBLIC_FIREBASE_*` variables in the host.
-"# stalllink" 
+"# localink" 

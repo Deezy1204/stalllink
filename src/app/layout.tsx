@@ -8,8 +8,8 @@ import "./globals.css";
 const jakarta = Plus_Jakarta_Sans({ subsets: ["latin"], variable: "--font-jakarta" });
 
 export const metadata: Metadata = {
-  title: "StallLink",
-  description: "Run your StallLink shop, or manage StallLink shops, users, orders and admins.",
+  title: "Localink",
+  description: "Run your Localink shop, or manage Localink shops, users, orders, reviews and admins.",
   robots: { index: false, follow: false },
 };
 

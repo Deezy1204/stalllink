@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState, type FormEvent } from "react";
 
 import { useAuth } from "@/components/AuthProvider";
+import { FullLogo } from "@/components/Brand";
 import { Button, Card, Input, Spinner } from "@/components/ui";
 import { digitsOnly } from "@/lib/catalog";
 import { auth } from "@/lib/firebase";
@@ -76,7 +77,7 @@ function Login() {
     e.preventDefault();
     if (mode === "signin") return run(() => signInWithEmailAndPassword(auth(), email.trim(), password));
     if (!name.trim()) return setError("Enter your full name.");
-    if (digitsOnly(phone).length < 7) return setError("Enter a valid phone number (buyers and StallLink use it to reach you).");
+    if (digitsOnly(phone).length < 7) return setError("Enter a valid phone number (buyers and Localink use it to reach you).");
     if (password.length < 8) return setError("Choose a password of at least 8 characters.");
     return run(async () => {
       const cred = await createUserWithEmailAndPassword(auth(), email.trim(), password);
@@ -88,12 +89,9 @@ function Login() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-gradient-to-b from-surface to-brand-50 px-4 py-10">
       <Card className="w-full max-w-md animate-rise p-7">
-        <div className="mb-6 flex items-center gap-3">
-          <div className="flex size-11 items-center justify-center rounded-2xl bg-brand text-lg font-black text-white shadow-lg shadow-brand/30">S</div>
-          <div>
-            <p className="text-lg font-extrabold text-brand">StallLink</p>
-            <p className="text-xs font-semibold uppercase tracking-widest text-ink-3">Merchant & admin console</p>
-          </div>
+        <div className="mb-6 flex flex-col items-center text-center">
+          <FullLogo className="h-32" />
+          <p className="mt-3 text-xs font-semibold uppercase tracking-widest text-ink-3">Merchant & admin console</p>
         </div>
 
         <div className="mb-5 grid grid-cols-2 rounded-xl bg-surface-2 p-1 text-sm font-semibold">
@@ -105,7 +103,7 @@ function Login() {
         </div>
 
         <p className="mb-5 text-sm text-ink-3">
-          {mode === "signin" ? "Use the same account you use in the StallLink app." : "Open a merchant account to run your shop from the web or the app."}
+          {mode === "signin" ? "Use the same account you use in the Localink app." : "Open a merchant account to run your shop from the web or the app."}
         </p>
         <form onSubmit={submit} className="space-y-4">
           {mode === "signup" && (

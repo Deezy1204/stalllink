@@ -6,7 +6,9 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { useAuth } from "@/components/AuthProvider";
 import { Button, Card, Spinner } from "@/components/ui";
 import { ensureProfile, watchMyShops, watchNotifications, watchProfile, watchShopOrders } from "@/lib/merchant";
-import type { NotificationDoc, OrderDoc, ShopDoc, UserDoc } from "@/lib/types";
+import { DEFAULT_CONFIG, toWallet, watchPaymentsConfig, watchWallet } from "@/lib/money";
+import { watchMyAppReview } from "@/lib/reviews";
+import type { NotificationDoc, OrderDoc, PaymentsConfig, ReviewDoc, ShopDoc, UserDoc, WalletDoc } from "@/lib/types";
 
 /** A voucher code that did not work at the counter (kept for this visit only, like the app). */
 export interface FailedScan {
@@ -33,11 +35,17 @@ interface MerchantData {
   error: string | null;
   failedScans: FailedScan[];
   addFailedScan: (code: string, reason: string) => void;
+  /** This account's review of Localink: null when they have not written one, undefined while loading. */
+  appReview: ReviewDoc | null | undefined;
+  /** Localink's accounts, prices and whether online payment is on. */
+  config: PaymentsConfig;
+  /** What Localink holds for the active shop (empty until it has earned something). */
+  wallet: WalletDoc | null;
 }
 
 const Ctx = createContext<MerchantData | null>(null);
 
-const activeKey = (uid: string) => `stalllink.activeShop.${uid}`;
+const activeKey = (uid: string) => `localink.activeShop.${uid}`;
 
 function readActive(uid: string): string | null {
   try {
@@ -58,6 +66,9 @@ export function MerchantDataProvider({ user, children }: { user: User; children:
   const [error, setError] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(() => readActive(user.uid));
   const [failedScans, setFailedScans] = useState<FailedScan[]>([]);
+  const [appReview, setAppReview] = useState<ReviewDoc | null | undefined>(undefined);
+  const [config, setConfig] = useState<PaymentsConfig>(DEFAULT_CONFIG);
+  const [wallet, setWallet] = useState<WalletDoc | null>(null);
 
   // Profile first: it is created here for accounts that never used the app.
   useEffect(() => {
@@ -96,6 +107,11 @@ export function MerchantDataProvider({ user, children }: { user: User; children:
   const phoneDigits = profile?.phoneDigits ?? "";
   useEffect(() => watchNotifications(user.uid, phoneDigits, setNotifications, () => {}), [user.uid, phoneDigits]);
 
+  // Shown as "Rate Localink" until they have.
+  useEffect(() => watchMyAppReview(user.uid, setAppReview, () => setAppReview(null)), [user.uid]);
+
+  useEffect(() => watchPaymentsConfig(setConfig, () => {}), []);
+
   const selectShop = useCallback(
     (id: string) => {
       setActiveId(id);
@@ -111,11 +127,17 @@ export function MerchantDataProvider({ user, children }: { user: User; children:
   const addFailedScan = useCallback((code: string, reason: string) => setFailedScans((l) => [{ code: code || "Unknown code", time: Date.now(), reason }, ...l]), []);
 
   const shop = shops.find((s) => s.id === activeId) ?? shops[0] ?? null;
+  const shopId = shop?.id;
+  useEffect(() => {
+    if (!shopId) return setWallet(null);
+    setWallet(toWallet(shopId));
+    return watchWallet(shopId, setWallet, () => {});
+  }, [shopId]);
   const shopOrders = useMemo(() => (shop ? orders.filter((o) => o.stallId === shop.id) : []), [orders, shop]);
   const unread = notifications.filter((n) => n.unread).length;
 
   useEffect(() => {
-    document.title = `${unread ? `(${unread}) ` : ""}StallLink Merchant`;
+    document.title = `${unread ? `(${unread}) ` : ""}Localink Merchant`;
   }, [unread]);
 
   if (profileError) {
@@ -137,7 +159,7 @@ export function MerchantDataProvider({ user, children }: { user: User; children:
     return (
       <Gate>
         <h1 className="text-xl font-bold">Account suspended</h1>
-        <p className="mt-2 text-sm text-ink-2">This account has been suspended. Contact StallLink support if you think this is a mistake.</p>
+        <p className="mt-2 text-sm text-ink-2">This account has been suspended. Contact Localink support if you think this is a mistake.</p>
         <Button variant="secondary" className="mt-5 w-full" onClick={signOut}>Sign out</Button>
       </Gate>
     );
@@ -145,7 +167,7 @@ export function MerchantDataProvider({ user, children }: { user: User; children:
 
   return (
     <Ctx.Provider
-      value={{ user, profile, shops, shop, selectShop, orders, shopOrders, notifications, unread, loaded: shopsLoaded, error, failedScans, addFailedScan }}
+      value={{ user, profile, shops, shop, selectShop, orders, shopOrders, notifications, unread, loaded: shopsLoaded, error, failedScans, addFailedScan, appReview, config, wallet }}
     >
       {children}
     </Ctx.Provider>

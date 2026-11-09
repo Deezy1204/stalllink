@@ -28,7 +28,8 @@ export default function Dashboard() {
   const peak = Math.max(1, ...months.map((m) => m.total));
 
   const toVerify = shops.filter((s) => !s.verified && !s.suspended);
-  const proofs = orders.filter((o) => o.paymentStatus === "proofSent");
+  // Proofs of transfers to Localink, which Localink confirms (shops confirm their own).
+  const proofs = orders.filter((o) => o.payTo === "localink" && o.paymentStatus === "proofSent");
   const newRequests = nominations.filter((n) => n.status === "new").length;
   const stats: { label: string; value: string | number; href: string; icon: IconName; alert?: boolean }[] = [
     { label: "Users", value: users.length, href: "/users", icon: "users" },
@@ -37,13 +38,13 @@ export default function Dashboard() {
     { label: "Shops to verify", value: toVerify.length, href: "/shops", icon: "verified", alert: toVerify.length > 0 },
     { label: "Orders this month", value: thisMonth.length, href: "/orders", icon: "receipt" },
     { label: "Sales this month", value: usd(thisMonth.reduce((s, o) => s + orderTotal(o), 0)), href: "/orders", icon: "chart" },
-    { label: "Payments to check", value: proofs.length, href: "/orders", icon: "cash", alert: proofs.length > 0 },
+    { label: "Payments to check", value: proofs.length, href: "/payments", icon: "cash", alert: proofs.length > 0 },
     { label: "New shop requests", value: newRequests, href: "/requests", icon: "plusSquare", alert: newRequests > 0 },
   ];
 
   return (
     <>
-      <PageHeader title="Dashboard" subtitle={`StallLink at a glance · ${now.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}`} />
+      <PageHeader title="Dashboard" subtitle={`Localink at a glance · ${now.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}`} />
       {error && <p className="mb-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-800">{error}</p>}
       {!loaded ? (
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
@@ -68,7 +69,7 @@ export default function Dashboard() {
             <Card className="p-5 lg:col-span-3">
               <div className="mb-4 flex items-baseline justify-between">
                 <h2 className="font-bold">Sales, last 6 months</h2>
-                <p className="text-xs text-ink-3">Orders placed through StallLink (paid to shops directly)</p>
+                <p className="text-xs text-ink-3">Orders placed through Localink (paid to shops directly)</p>
               </div>
               <div className="flex h-48 items-end gap-3">
                 {months.map((m, i) => (

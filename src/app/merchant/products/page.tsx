@@ -8,8 +8,9 @@ import { useMerchant } from "@/components/merchant/MerchantData";
 import { NoShop } from "@/components/merchant/OrderBits";
 import { Badge, Card, Empty, PageHeader, SearchInput, Spinner, Switch, Tabs, useToast } from "@/components/ui";
 import { fromPrice, productCategoryLabel, productPhotos, variationLabel } from "@/lib/catalog";
+import { applyDiscount } from "@/lib/money";
 import { patchProduct } from "@/lib/merchant";
-import { usd, type Product } from "@/lib/types";
+import { usd, type Product, isActive } from "@/lib/types";
 
 /** The active shop's inventory: search, filter, adjust stock and hide/show products. */
 export default function ProductsPage() {
@@ -76,7 +77,8 @@ export default function ProductsPage() {
                     {p.subtitle && <p className="truncate text-sm text-ink-3">{p.subtitle}</p>}
                     {sizes.length > 0 && <p className="truncate text-xs text-ink-2">{sizes.map(variationLabel).join(" · ")}</p>}
                     <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                      <span className="text-lg font-extrabold text-brand">{sizes.length > 1 ? "From " : ""}{usd(fromPrice(p))}</span>
+                      <span className={`text-lg font-extrabold ${isActive(p.discount) ? "text-red-700" : "text-brand"}`}>{sizes.length > 1 ? "From " : ""}{usd(isActive(p.discount) ? applyDiscount(fromPrice(p), p.discount!) : fromPrice(p))}</span>
+                      {isActive(p.discount) && <><s className="text-sm text-ink-3">{usd(fromPrice(p))}</s> <span className="rounded-md bg-red-700 px-1.5 text-xs font-bold text-white">-{p.discount!.percent}%</span></>}
                       {sizes.length > 1 && <Badge>{sizes.length} sizes</Badge>}
                       {sizes.some((v) => v.bulk?.length) && <Badge tone="brand">Bulk</Badge>}
                     </div>

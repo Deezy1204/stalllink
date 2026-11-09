@@ -30,7 +30,7 @@ export default function MerchantOrders() {
     const text = q.trim().toLowerCase();
     return shopOrders.filter((o) => {
       if (tab === "open" && o.status !== "readyForPickup") return false;
-      if (tab === "proof" && o.paymentStatus !== "proofSent") return false;
+      if (tab === "proof" && (o.paymentStatus !== "proofSent" || o.payTo === "localink")) return false;
       if (tab === "done" && o.status === "readyForPickup") return false;
       if (place !== "all" && placeOf(o) !== place) return false;
       return !text || `${o.id} ${o.voucherCode} ${o.senderName} ${o.recipient?.name} ${o.recipient?.phone} ${o.items.map((i) => i.name).join(" ")}`.toLowerCase().includes(text);
@@ -70,7 +70,7 @@ export default function MerchantOrders() {
           onChange={setTab}
           options={[
             { value: "open", label: "Awaiting pickup", count: shopOrders.filter((o) => o.status === "readyForPickup").length },
-            { value: "proof", label: "Payments to check", count: shopOrders.filter((o) => o.paymentStatus === "proofSent").length },
+            { value: "proof", label: "Payments to check", count: shopOrders.filter((o) => o.payTo !== "localink" && o.paymentStatus === "proofSent").length },
             { value: "done", label: "Completed", count: shopOrders.filter((o) => o.status !== "readyForPickup").length },
             { value: "all", label: "All" },
           ]}

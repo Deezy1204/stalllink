@@ -1,12 +1,12 @@
 // The sales report (PDF / CSV) and order receipt a merchant downloads, laid
-// out like the app's (stall_link/lib/core/utils/documents.dart).
+// out like the app's (Localink/lib/core/utils/documents.dart).
 
 import type { jsPDF as JsPdf } from "jspdf";
 
 import { dayMonthYear, paymentStatusOf, paymentStatusText, pickupPlace } from "./catalog";
-import { orderTotal, paymentTitle, statusLabel, usd, type OrderDoc, type ShopDoc } from "./types";
+import { orderShare, orderTotal, paidViaLabel, paymentTitle, statusLabel, usd, viaLocalink, type OrderDoc, type ShopDoc } from "./types";
 
-const BRAND: [number, number, number] = [0xba, 0x00, 0x36];
+const BRAND: [number, number, number] = [0x0a, 0x7a, 0x63];
 const GREY: [number, number, number] = [0x5e, 0x5e, 0x66];
 const BLACK: [number, number, number] = [0x14, 0x1b, 0x2b];
 
@@ -34,33 +34,37 @@ const cell = (v: string | number) => {
 /** Same columns as the app's CSV export. */
 export function earningsCsv(orders: OrderDoc[]): Blob {
   const rows = orders.map((o) =>
-    [o.id, dayMonthYear(o.createdAt), o.voucherCode, o.recipient?.name ?? "", o.items.length, paymentTitle(o.payment), paymentStatusText[paymentStatusOf(o)], orderTotal(o).toFixed(2), statusLabel[o.status] ?? o.status]
+    [
+      o.id, dayMonthYear(o.createdAt), o.voucherCode, o.recipient?.name ?? "", o.items.length, o.paidVia ? paidViaLabel[o.paidVia] : paymentTitle(o.payment), viaLocalink(o) ? "Localink" : "Shop", paymentStatusText[paymentStatusOf(o)],
+      orderTotal(o).toFixed(2), (o.serviceFee ?? 0).toFixed(2), orderShare(o).toFixed(2), statusLabel[o.status] ?? o.status,
+    ]
       .map(cell)
       .join(","),
   );
-  return new Blob([`Order,Date,Voucher,Recipient,Items,Payment,Payment status,Total (USD),Status\n${rows.join("\n")}\n`], { type: "text/csv" });
+  return new Blob([`Order,Date,Voucher,Recipient,Items,Payment,Paid to,Payment status,Buyer paid (USD),Service fee (USD),Your sales (USD),Status\n${rows.join("\n")}\n`], { type: "text/csv" });
 }
 
 async function newPdf(format: "a4" | "a5", title: string): Promise<JsPdf> {
   const { jsPDF } = await import("jspdf");
   const pdf = new jsPDF({ unit: "pt", format });
-  pdf.setProperties({ title, author: "StallLink" });
+  pdf.setProperties({ title, author: "Localink" });
   return pdf;
 }
 
 export async function earningsPdf(title: string, orders: OrderDoc[]): Promise<Blob> {
-  const pdf = await newPdf("a4", "StallLink sales report");
+  const pdf = await newPdf("a4", "Localink sales report");
   const W = pdf.internal.pageSize.getWidth();
   const H = pdf.internal.pageSize.getHeight();
   const M = 32;
   let y = M + 14;
 
-  pdf.setFont("helvetica", "bold").setFontSize(20).setTextColor(...BRAND).text("StallLink sales report", M, y);
+  pdf.setFont("helvetica", "bold").setFontSize(20).setTextColor(...BRAND).text("Localink sales report", M, y);
   y += 18;
   pdf.setFont("helvetica", "normal").setFontSize(11).setTextColor(...GREY).text(safe(`${title} - ${dayMonthYear(Date.now())}`), M, y);
   y += 26;
-  const collected = orders.filter((o) => o.status === "collected").reduce((s, o) => s + orderTotal(o), 0);
-  const pending = orders.filter((o) => o.status === "readyForPickup").reduce((s, o) => s + orderTotal(o), 0);
+  // The shop's share of each sale (without Localink's service fee).
+  const collected = orders.filter((o) => o.status === "collected").reduce((s, o) => s + orderShare(o), 0);
+  const pending = orders.filter((o) => o.status === "readyForPickup").reduce((s, o) => s + orderShare(o), 0);
   pdf.setFont("helvetica", "bold").setTextColor(...BLACK).text(`Total: ${usd(collected + pending)}    Collected: ${usd(collected)}    Awaiting pickup: ${usd(pending)}`, M, y);
   y += 20;
 
@@ -69,7 +73,7 @@ export async function earningsPdf(title: string, orders: OrderDoc[]): Promise<Bl
     { label: "Date", w: 70 },
     { label: "Recipient", w: 120 },
     { label: "Payment", w: 110 },
-    { label: "Total", w: 60 },
+    { label: "Your sales", w: 60 },
     { label: "Status", w: W - 2 * M - 442 },
   ];
   const header = () => {
@@ -91,8 +95,8 @@ export async function earningsPdf(title: string, orders: OrderDoc[]): Promise<Bl
       header();
       pdf.setFont("helvetica", "normal").setTextColor(...BLACK);
     }
-    if (i % 2 === 1) pdf.setFillColor(0xf4, 0xf5, 0xf8).rect(M, y, W - 2 * M, 18, "F");
-    const values = [o.id, dayMonthYear(o.createdAt), o.recipient?.name ?? "", paymentTitle(o.payment), usd(orderTotal(o)), statusLabel[o.status] ?? o.status];
+    if (i % 2 === 1) pdf.setFillColor(0xee, 0xf4, 0xf1).rect(M, y, W - 2 * M, 18, "F");
+    const values = [o.id, dayMonthYear(o.createdAt), o.recipient?.name ?? "", viaLocalink(o) ? "Through Localink" : paymentTitle(o.payment), usd(orderShare(o)), statusLabel[o.status] ?? o.status];
     let x = M + 6;
     values.forEach((v, j) => {
       const text = pdf.splitTextToSize(safe(v), cols[j].w - 8)[0] ?? "";
@@ -107,7 +111,7 @@ export async function earningsPdf(title: string, orders: OrderDoc[]): Promise<Bl
 
 /** A plain receipt of the order, as the shop sees it (no QR or PIN). */
 export async function receiptPdf(o: OrderDoc, shop?: ShopDoc): Promise<Blob> {
-  const pdf = await newPdf("a5", `StallLink receipt ${o.id}`);
+  const pdf = await newPdf("a5", `Localink receipt ${o.id}`);
   const W = pdf.internal.pageSize.getWidth();
   const H = pdf.internal.pageSize.getHeight();
   const M = 28;
@@ -131,7 +135,7 @@ export async function receiptPdf(o: OrderDoc, shop?: ShopDoc): Promise<Blob> {
     y += 15;
   };
 
-  pdf.setFont("helvetica", "bold").setFontSize(20).setTextColor(...BRAND).text("StallLink", M, y);
+  pdf.setFont("helvetica", "bold").setFontSize(20).setTextColor(...BRAND).text("Localink", M, y);
   pdf.setFontSize(12).setTextColor(...GREY).text("RECEIPT", W - M, y, { align: "right" });
   y += 12;
   line();
@@ -159,7 +163,9 @@ export async function receiptPdf(o: OrderDoc, shop?: ShopDoc): Promise<Blob> {
   line();
   const subtotal = o.items.reduce((s, i) => s + i.qty * i.unitPrice, 0);
   row("Subtotal", usd(subtotal));
+  if (o.discount) row(o.promoLabel || "Shop offer", `-${usd(o.discount)}`);
   if (o.runnerFee) row("Doorstep runner", usd(o.runnerFee));
+  if (o.serviceFee) row("Localink service fee", usd(o.serviceFee));
   row("Total paid", usd(orderTotal(o)), { bold: true, color: BRAND });
   row("Payment", `${paymentTitle(o.payment)} · ${paymentStatusText[paymentStatusOf(o)]}`);
   return pdf.output("blob");

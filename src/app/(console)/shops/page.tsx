@@ -7,7 +7,8 @@ import { Icon } from "@/components/icons";
 import { LocationList, LocationsMap, shopPlaces } from "@/components/Locations";
 import { Badge, Button, Card, Empty, Modal, PageHeader, SearchInput, Tabs, useConfirm, useToast } from "@/components/ui";
 import { deleteShop, setShopFlags } from "@/lib/data";
-import { orderTotal, paymentTitle, shopCategories, usd, type ShopDoc } from "@/lib/types";
+import { endPro, grantPro } from "@/lib/money";
+import { isPro, orderTotal, paymentTitle, shopCategories, shortDate, usd, type ShopDoc } from "@/lib/types";
 
 type Filter = "all" | "verify" | "verified" | "suspended";
 
@@ -57,6 +58,17 @@ export default function ShopsPage() {
     if (!s.suspended && !(await confirm({ title: `Suspend ${s.name}?`, message: "Buyers will not see this shop until you restore it.", confirm: "Suspend", danger: true }))) return;
     act(s.id, () => setShopFlags(s.id, { suspended: !s.suspended }), s.suspended ? "Shop restored." : "Shop suspended.");
   };
+  /** A free month of Pro (e.g. to welcome a shop), or ending Pro now. */
+  const togglePro = async (s: ShopDoc) => {
+    if (isPro(s)) {
+      if (!(await confirm({ title: `End Pro for ${s.name}?`, message: "The shop goes back to Basic now: buyers pay through Localink with a service fee, and payouts are weekly. It is not refunded.", confirm: "End Pro", danger: true }))) return;
+      act(s.id, () => endPro(s), "Pro ended.");
+    } else {
+      if (!(await confirm({ title: `Give ${s.name} a month of Pro?`, message: "Free of charge: no service fee, its own payment details, daily payouts for 30 days.", confirm: "Give a month" }))) return;
+      act(s.id, () => grantPro(s, 30), "Pro switched on for 30 days.");
+    }
+  };
+
   const remove = async (s: ShopDoc) => {
     if (!(await confirm({ title: `Delete ${s.name}?`, message: "This removes the shop and its products for good. Past orders stay in the records.", confirm: "Delete", danger: true }))) return;
     setOpen(null);
@@ -103,6 +115,7 @@ export default function ShopsPage() {
                 </button>
                 <div className="mt-3 flex flex-wrap gap-1.5">
                   <Badge tone={s.verified ? "success" : "warning"}>{s.verified ? "Verified" : "Not verified"}</Badge>
+                  <Badge tone={isPro(s) ? "dark" : "neutral"}>{isPro(s) ? `Pro until ${shortDate(s.proUntil)}` : "Basic"}</Badge>
                   {s.suspended && <Badge tone="danger">Suspended</Badge>}
                   <Badge>{s.products?.length ?? 0} products</Badge>
                   {!!s.branches?.length && (
@@ -111,11 +124,15 @@ export default function ShopsPage() {
                     </Badge>
                   )}
                   <Badge>{sales(s).length} orders · {usd(total)}</Badge>
-                  <Badge tone={s.paymentOptions?.length ? "neutral" : "danger"}>{s.paymentOptions?.length ?? 0} payment methods</Badge>
+                  <Badge tone={s.reviewCount && (s.rating ?? 0) < 3 ? "danger" : "neutral"}>
+                    <Icon name="star" className="size-3.5" strokeWidth={2} /> {s.reviewCount ? `${(s.rating ?? 0).toFixed(1)} (${s.reviewCount})` : "No reviews"}
+                  </Badge>
+                  {isPro(s) && <Badge tone={s.paymentOptions?.length ? "neutral" : "warning"}>{s.paymentOptions?.length ?? 0} own payment methods</Badge>}
                 </div>
                 <div className="mt-4 flex flex-wrap gap-2 border-t border-line pt-3">
                   <Button variant={s.verified ? "secondary" : "primary"} loading={busy === s.id} onClick={() => toggleVerify(s)}>{s.verified ? "Unverify" : "Verify"}</Button>
                   <Button variant="secondary" disabled={busy === s.id} onClick={() => toggleSuspend(s)}>{s.suspended ? "Restore" : "Suspend"}</Button>
+                  <Button variant="ghost" disabled={busy === s.id} onClick={() => togglePro(s)}>{isPro(s) ? "End Pro" : "Give a month of Pro"}</Button>
                   <Button variant="ghost" onClick={() => setOpen(s)}>Details</Button>
                 </div>
               </Card>

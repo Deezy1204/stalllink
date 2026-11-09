@@ -9,7 +9,7 @@ import { ago } from "@/lib/catalog";
 import { markNotificationsRead } from "@/lib/merchant";
 import type { NotificationDoc } from "@/lib/types";
 
-/** The app's icon keys (stall_link serialization.dart) as console icons. */
+/** The app's icon keys (Localink serialization.dart) as console icons. */
 const ICONS: Record<string, IconName> = {
   volunteer_activism: "gift",
   confirmation_number: "ticket",
@@ -22,6 +22,7 @@ const ICONS: Record<string, IconName> = {
   notifications: "bell",
   verified: "verified",
   receipt_long: "receipt",
+  star: "star",
 };
 
 const TONE = { primary: "bg-brand-50 text-brand", secondary: "bg-mint-100 text-mint-800", neutral: "bg-surface-2 text-ink-2" };
@@ -38,7 +39,7 @@ export default function NotificationsPage() {
     if (n.unread) read([n.id]);
     if (!n.orderId) return;
     if (orders.some((o) => o.id === n.orderId)) router.push(`/merchant/orders/${n.orderId}`);
-    else toast("That order is one you sent or receive. Open it in the StallLink app.");
+    else toast("That order is one you sent or receive. Open it in the Localink app.");
   }
 
   return (

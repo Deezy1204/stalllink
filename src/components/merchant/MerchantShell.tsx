@@ -5,7 +5,9 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { useAuth } from "@/components/AuthProvider";
+import { BrandHeader, BrandInline } from "@/components/Brand";
 import { Icon, type IconName } from "@/components/icons";
+import { isPro } from "@/lib/types";
 import { useMerchant } from "./MerchantData";
 
 export function ShopThumb({ src, name, className = "size-10" }: { src?: string; name: string; className?: string }) {
@@ -43,7 +45,7 @@ function ShopSwitcher({ onDone }: { onDone: () => void }) {
         <ShopThumb src={shop.bannerAsset} name={shop.name} />
         <span className="min-w-0 flex-1">
           <span className="block truncate text-sm font-bold">{shop.name}</span>
-          <span className="block truncate text-xs text-ink-3">{shop.suspended ? "Paused by StallLink" : shop.verified ? "Verified" : "Awaiting verification"}</span>
+          <span className="block truncate text-xs text-ink-3">{shop.suspended ? "Paused by Localink" : shop.verified ? "Verified" : "Awaiting verification"}</span>
         </span>
         <Icon name="chevronsUpDown" className="size-4 text-ink-3" strokeWidth={2} />
       </button>
@@ -80,32 +82,34 @@ function ShopSwitcher({ onDone }: { onDone: () => void }) {
 export function MerchantShell({ children }: { children: ReactNode }) {
   const path = usePathname();
   const { signOut } = useAuth();
-  const { profile, user, shopOrders, unread } = useMerchant();
+  const { profile, user, shopOrders, unread, shop } = useMerchant();
   const [open, setOpen] = useState(false);
 
   const awaiting = shopOrders.filter((o) => o.status === "readyForPickup").length;
-  const proofs = shopOrders.filter((o) => o.paymentStatus === "proofSent").length;
+  // Proof of payments to the shop's own accounts; Localink checks payments made to it.
+  const proofs = shopOrders.filter((o) => o.payTo !== "localink" && o.paymentStatus === "proofSent").length;
   const nav: { href: string; label: string; icon: IconName; count?: number; alert?: boolean }[] = [
     { href: "/merchant", label: "Overview", icon: "dashboard" },
     { href: "/merchant/orders", label: "Orders", icon: "receipt", count: awaiting, alert: proofs > 0 },
     { href: "/merchant/collect", label: "Scan & collect", icon: "scan" },
     { href: "/merchant/products", label: "Products", icon: "box" },
     { href: "/merchant/revenue", label: "Revenue", icon: "chart" },
+    { href: "/merchant/earnings", label: "Earnings", icon: "cash" },
+    { href: "/merchant/promotions", label: "Discounts & offers", icon: "gift" },
+    { href: "/merchant/plan", label: isPro(shop) ? "Plan: Pro" : "Plan: Basic", icon: "sparkles", alert: !isPro(shop) },
+    { href: "/merchant/reviews", label: "Reviews", icon: "star" },
     { href: "/merchant/shop", label: "Shop settings", icon: "store" },
     { href: "/merchant/notifications", label: "Notifications", icon: "bell", count: unread, alert: unread > 0 },
     { href: "/merchant/profile", label: "Profile", icon: "user" },
+    { href: "/merchant/feedback", label: "Rate Localink", icon: "sparkles" },
   ];
   const isActive = (href: string) =>
     href === "/merchant" ? path === "/merchant" : href === "/merchant/shop" ? path === "/merchant/shop" : path.startsWith(href);
 
   const sidebar = (
     <nav className="flex h-full flex-col gap-1 overflow-y-auto p-4">
-      <div className="mb-5 flex items-center gap-3 px-2">
-        <div className="flex size-10 items-center justify-center rounded-2xl bg-brand text-lg font-black text-white shadow-lg shadow-brand/30">S</div>
-        <div>
-          <p className="font-extrabold text-brand">StallLink</p>
-          <p className="text-[11px] font-semibold uppercase tracking-widest text-ink-3">Merchant</p>
-        </div>
+      <div className="mb-5 px-2">
+        <BrandHeader label="Merchant" />
       </div>
       <ShopSwitcher onDone={() => setOpen(false)} />
       {nav.map((n) => (
@@ -137,7 +141,7 @@ export function MerchantShell({ children }: { children: ReactNode }) {
         <button onClick={() => setOpen(true)} className="group rounded-xl p-2 hover:bg-surface-2" aria-label="Menu">
           <Icon name="menu" strokeWidth={2} />
         </button>
-        <p className="flex-1 font-extrabold text-brand">StallLink Merchant</p>
+        <span className="min-w-0 flex-1"><BrandInline label="Merchant" /></span>
         <Link href="/merchant/notifications" className="group relative rounded-xl p-2 hover:bg-surface-2" aria-label={`Notifications${unread ? `, ${unread} unread` : ""}`}>
           <Icon name="bell" loop={unread > 0} />
           {!!unread && <span className="absolute right-0.5 top-0.5 min-w-4 rounded-full bg-brand px-1 text-center text-[10px] font-bold leading-4 text-white">{unread}</span>}

@@ -7,7 +7,7 @@ import { Icon } from "@/components/icons";
 import { Badge, Button, Card, Modal, useConfirm, useToast } from "@/components/ui";
 import { isOpenOrder, paymentStatusOf, paymentStatusText, paymentSummary, pickupPlace, relativeDay } from "@/lib/catalog";
 import { confirmPayment } from "@/lib/merchant";
-import { orderTotal, paymentTitle, statusLabel, usd, type OrderDoc, type ShopDoc } from "@/lib/types";
+import { orderShare, orderTotal, paidViaLabel, paymentTitle, statusLabel, usd, viaLocalink, type OrderDoc, type ShopDoc } from "@/lib/types";
 import { useMerchant } from "./MerchantData";
 
 export const paymentTone = (o: OrderDoc) => (paymentStatusOf(o) === "confirmed" ? "success" : paymentStatusOf(o) === "proofSent" ? "warning" : "danger");
@@ -34,14 +34,21 @@ export function OrderCard({ order: o, shop, index }: { order: OrderDoc; shop?: S
               <span className="mt-1 inline-block"><Badge tone={paymentTone(o)}>{paymentStatusText[paymentStatusOf(o)]}</Badge></span>
             )}
           </div>
-          <p className="text-lg font-extrabold text-brand">{usd(orderTotal(o))}</p>
+          <div className="text-right">
+            <p className="text-lg font-extrabold text-brand">{usd(orderShare(o))}</p>
+            {viaLocalink(o) && <p className="text-[11px] font-semibold text-ink-3">via Localink</p>}
+          </div>
         </div>
       </Card>
     </Link>
   );
 }
 
-/** How the order is paid and where that stands, with the buyer's proof and the shop's Confirm button. */
+/**
+ * How the order is paid and where that stands. For payments to the shop's
+ * own accounts: the buyer's proof and the shop's Confirm button. Payments
+ * to Localink are confirmed by Localink.
+ */
 export function PaymentCard({ order: o, shopName }: { order: OrderDoc; shopName: string }) {
   const { user } = useMerchant();
   const confirm = useConfirm();
@@ -68,6 +75,19 @@ export function PaymentCard({ order: o, shopName }: { order: OrderDoc; shopName:
     } finally {
       setBusy(false);
     }
+  }
+
+  if (viaLocalink(o)) {
+    return (
+      <div className={`rounded-2xl border p-4 ${tone}`}>
+        <p className="font-bold">{status === "confirmed" ? "Paid through Localink" : status === "proofSent" ? "Localink is checking the payment" : "Waiting for the buyer to pay Localink"}</p>
+        <p className="text-sm">
+          {status === "confirmed"
+            ? `${o.paidVia ? paidViaLabel[o.paidVia] : paymentTitle(o.payment)} · ${usd(orderShare(o))} goes to your earnings once collected.`
+            : "Localink confirms it. Hand the order over once it shows as paid."}
+        </p>
+      </div>
+    );
   }
 
   return (
@@ -108,7 +128,7 @@ export function Timeline({ order: o, shop }: { order: OrderDoc; shop?: ShopDoc }
   const done = o.status === "collected";
   const steps = [
     { title: "Ordered", sub: `${usd(orderTotal(o))} · ${relativeDay(o.createdAt)}`, ok: true },
-    { title: paymentStatusText[paymentStatusOf(o)], sub: paymentTitle(o.payment), ok: paymentStatusOf(o) === "confirmed" },
+    { title: paymentStatusText[paymentStatusOf(o)], sub: viaLocalink(o) ? `Through Localink${o.paidVia ? ` · ${paidViaLabel[o.paidVia]}` : ""}` : paymentTitle(o.payment), ok: paymentStatusOf(o) === "confirmed" },
     { title: "Voucher sent", sub: o.recipient?.name ?? "", ok: true },
     { title: "Picked up", sub: done && o.collectedAt ? `${relativeDay(o.collectedAt)}${shop?.standNo ? ` at ${shop.standNo}` : ""}` : `Waiting at ${pickupPlace(o, shop).name}`, ok: done },
   ];

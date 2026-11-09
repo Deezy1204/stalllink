@@ -11,7 +11,7 @@ import { PhotoSlots } from "@/components/merchant/Photos";
 import { Button, Card, Empty, Input, Pill, Select, Spinner, Switch, Textarea, useConfirm, useToast } from "@/components/ui";
 import { amount, MAX_PRODUCT_PHOTOS, MEASURE_UNITS, PRODUCT_CATEGORIES, fmtNumber, productPhotos, unitMenuLabel, variationLabel, zar } from "@/lib/catalog";
 import { deleteProduct, saveProduct } from "@/lib/merchant";
-import { usd, type Product, type Variation } from "@/lib/types";
+import { isActive, shortDate, usd, type Product, type Variation } from "@/lib/types";
 
 interface BulkForm {
   key: string;
@@ -78,7 +78,7 @@ const num = (s: string) => (s.trim() === "" ? NaN : Number(s.trim()));
 const sizeMeasure = (s: SizeForm) => (num(s.size) > 0 ? amount(s.unit, num(s.size)) : "");
 
 function draftKey(uid: string, id: string) {
-  return `stalllink.draft.product.${uid}.${id}`;
+  return `localink.draft.product.${uid}.${id}`;
 }
 function readDraft(k: string): Draft | null {
   try {
@@ -195,7 +195,20 @@ export default function ProductForm() {
     const stock = variations.reduce((a, v) => a + v.stock, 0);
     const desc = form.desc.trim();
     const product: Product = original.current
-      ? { ...original.current, name: form.name.trim(), description: desc, price: from, stock, category: form.category, imageAsset: form.images[0] ?? "", images: form.images, available: form.available, variations }
+      ? {
+          ...original.current,
+          // The live discount: it may have been changed on Discounts & offers while this form was open.
+          discount: existing ? (existing.discount ?? null) : (original.current.discount ?? null),
+          name: form.name.trim(),
+          description: desc,
+          price: from,
+          stock,
+          category: form.category,
+          imageAsset: form.images[0] ?? "",
+          images: form.images,
+          available: form.available,
+          variations,
+        }
       : {
           id: `p${stamp}`,
           stallId: shop.id,
@@ -362,6 +375,17 @@ export default function ProductForm() {
         })}
       </div>
       <Button variant="secondary" className="mt-3 w-full" onClick={() => set({ sizes: [...form.sizes, blankSize(form.sizes.at(-1)?.unit)] })}>+ Add another size</Button>
+
+      {!isNew && (
+        <Link href="/merchant/promotions" className="mt-6 flex items-center gap-3 rounded-2xl border border-line bg-white p-4 text-sm hover:bg-surface">
+          <Icon name="gift" className="size-5 text-accent" />
+          <span className="flex-1">
+            <b className="block">{isActive(existing?.discount) ? `${existing!.discount!.percent}% off${existing!.discount!.label ? ` · ${existing!.discount!.label}` : ""}` : "Put this product on sale"}</b>
+            <span className="text-ink-3">{isActive(existing?.discount) ? (existing!.discount!.endsAt ? `Until ${shortDate(existing!.discount!.endsAt)}` : "Until you end it") : "Set discounts in Discounts & offers"}</span>
+          </span>
+          <span className="font-semibold text-brand">Manage ›</span>
+        </Link>
+      )}
 
       <Card className="mt-6 p-4">
         <Switch

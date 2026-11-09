@@ -44,7 +44,7 @@ export default function OrdersPage() {
             { value: "all", label: "All", count: orders.length },
             { value: "open", label: "Awaiting pickup" },
             { value: "collected", label: "Collected" },
-            { value: "proof", label: "Proof to check", count: orders.filter((o) => o.paymentStatus === "proofSent").length },
+            { value: "proof", label: "Proof sent", count: orders.filter((o) => o.paymentStatus === "proofSent").length },
             { value: "unpaid", label: "No proof yet" },
           ]}
         />

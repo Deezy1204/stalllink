@@ -28,7 +28,7 @@ export default function RequestsPage() {
 
   return (
     <>
-      <PageHeader title="Shop requests" subtitle="Shops buyers asked StallLink to bring on board." />
+      <PageHeader title="Shop requests" subtitle="Shops buyers asked Localink to bring on board." />
       <div className="mb-4">
         <Tabs
           value={filter}

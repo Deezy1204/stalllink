@@ -1,19 +1,23 @@
 @import "tailwindcss";
 
-/* StallLink palette (matches the mobile app's AppColors). */
+/* Localink palette, from the logo (matches the mobile app's AppColors):
+   teal for actions, the pin's dark green for text, its orange for highlights. */
 @theme {
-  --color-brand: #ba0036;
-  --color-brand-600: #9e002e;
-  --color-brand-50: #ffe6e8;
-  --color-ink: #141b2b;
-  --color-ink-2: #3f4555;
-  --color-ink-3: #7a7f8c;
-  --color-line: #e6e8ee;
-  --color-surface: #f8f9fc;
-  --color-surface-2: #f0f2f7;
-  --color-mint-100: #d9f5e9;
-  --color-mint-600: #1f9d6b;
-  --color-mint-800: #0f5c3e;
+  --color-brand: #0a7a63; /* logo teal, a shade darker so white text on it passes AA */
+  --color-brand-600: #07624f;
+  --color-brand-50: #e3f4ee;
+  --color-ink: #13261f; /* the pin */
+  --color-ink-2: #3c4d46;
+  --color-ink-3: #6b7b74;
+  --color-line: #e0e8e4;
+  --color-surface: #f6f9f7;
+  --color-surface-2: #ecf2ef;
+  --color-accent: #e69a27; /* the orange ring: stars and highlights, never body text */
+  --color-accent-50: #fdf2e1;
+  --color-accent-800: #8a5409;
+  --color-mint-100: #d7f2e1; /* success: verified, paid, collected */
+  --color-mint-600: #1e8a4f;
+  --color-mint-800: #145c33;
 
   --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
 
@@ -57,7 +61,7 @@ body {
 .loc-pin {
   display: flex; align-items: center; justify-content: center; width: 30px; height: 30px;
   border-radius: 50% 50% 50% 0; transform: rotate(-45deg); background: white; border: 2.5px solid var(--color-brand);
-  color: var(--color-brand); font: 800 12px/1 var(--font-sans); box-shadow: 0 4px 10px rgba(20, 27, 43, 0.25);
+  color: var(--color-brand); font: 800 12px/1 var(--font-sans); box-shadow: 0 4px 10px rgba(19, 38, 31, 0.25);
   animation: loc-drop 0.55s cubic-bezier(0.34, 1.45, 0.64, 1) both;
 }
 .loc-pin > b { transform: rotate(45deg); }
@@ -129,6 +133,7 @@ body {
 .ai-cash .ai-coin { --a: ai-coin; }
 .ai-mail .ai-flap { --a: ai-flap; transform-origin: 50% 0; }
 .ai-sparkles .ai-star { --a: ai-twinkle; }
+.ai-rate { --a: ai-star-turn; --e: var(--ai-bounce); }
 .ai-globe .ai-meridian { --a: ai-spin-y; }
 .ai-verified .ai-seal { --a: ai-turn45; }
 .ai-verified .ai-tick { --a: ai-trace; --d: 120ms; }
@@ -161,5 +166,7 @@ body {
 @keyframes ai-roll { 0%, 50%, 100% { transform: translateX(0); } 18% { transform: translateX(2.6px); } 32% { transform: translateX(-1px); } 42% { transform: translateX(0); } }
 @keyframes ai-coin { 0%, 50%, 100% { transform: scaleX(1); } 14% { transform: scaleX(0.1); } 28% { transform: scaleX(1); } 36% { transform: scaleX(0.5); } 44% { transform: scaleX(1); } }
 @keyframes ai-flap { 0%, 50%, 100% { transform: scaleY(1); } 18% { transform: scaleY(-0.55); } 32% { transform: scaleY(1.1); } 42% { transform: scaleY(1); } }
+/* A fifth of a turn, so the star lands back on itself. */
+@keyframes ai-star-turn { 0% { transform: rotate(0) scale(1); } 18% { transform: rotate(30deg) scale(0.78); } 40%, 100% { transform: rotate(72deg) scale(1); } }
 @keyframes ai-twinkle { 0%, 50%, 100% { transform: scale(1); opacity: 1; } 16% { transform: scale(0.3); opacity: 0.4; } 30% { transform: scale(1.25); opacity: 1; } 40% { transform: scale(1); } }
 @keyframes ai-spin-y { 0%, 50%, 100% { transform: scaleX(1); } 15% { transform: scaleX(0.05); } 30% { transform: scaleX(-1); } 45% { transform: scaleX(1); } }

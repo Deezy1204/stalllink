@@ -1,5 +1,5 @@
 // Everything a merchant does, written to Firestore the way the mobile app
-// does it (stall_link/lib/state/app_store.dart), so the app and the web stay
+// does it (Localink/lib/state/app_store.dart), so the app and the web stay
 // interchangeable: notifications carry `fromUser` for the push function, and
 // shop writes never touch the admin-only `verified` / `suspended` flags.
 
@@ -23,7 +23,7 @@ import { getDownloadURL, ref, uploadBytesResumable } from "firebase/storage";
 
 import { digitsOnly, dollars, hoursSummary, legacyCategory } from "./catalog";
 import { db, storage } from "./firebase";
-import { orderTotal, type NotificationDoc, type OrderDoc, type Product, type ShopDoc, type UserDoc } from "./types";
+import { orderTotal, type Discount, type NotificationDoc, type OrderDoc, type Product, type ShopDoc, type ShopPromo, type UserDoc } from "./types";
 
 /** Firestore refuses `undefined` values: drop them (deeply) before writing. */
 function clean<T>(v: T): T {
@@ -77,7 +77,7 @@ export async function ensureProfile(u: User): Promise<UserDoc> {
 export const watchProfile = (uid: string, on: (u: UserDoc) => void, onError: (e: Error) => void): Unsubscribe =>
   onSnapshot(doc(db(), "users", uid), (s) => s.exists() && on(toProfile(uid, s.data())), onError);
 
-/** The public part of a profile that people search reads (stall_link serialization.dart directoryToMap). */
+/** The public part of a profile that people search reads (Localink serialization.dart directoryToMap). */
 async function syncDirectory(uid: string, p: { name: string; phone: string; city: string; findable: boolean }) {
   const d = doc(db(), "directory", uid);
   if (!p.findable || !p.name.trim() || !digitsOnly(p.phone)) return deleteDoc(d);
@@ -176,10 +176,12 @@ async function notify(
 
 /**
  * Saves the shop's settings. Products are left out (they are saved one at a
- * time, below) and so are the admin-only flags; the rest is merged.
+ * time, below) and so are the admin-only flags and the rating (the Cloud
+ * Functions keep it); the rest is merged.
  */
 export async function saveShop(uid: string, shop: ShopDoc, isNew: boolean) {
-  const { products: _products, verified: _verified, suspended: _suspended, ...settings } = shop;
+  // `proUntil` too: only Localink sets the plan.
+  const { products: _products, verified: _verified, suspended: _suspended, rating: _rating, reviewCount: _reviewCount, proUntil: _proUntil, ...settings } = shop;
   const categories = settings.categories ?? [];
   const hours = hoursSummary(settings.schedule ?? []);
   const data: Record<string, unknown> = {
@@ -216,10 +218,20 @@ export const deleteProduct = (shopId: string, productId: string) => editProducts
 export const patchProduct = (shopId: string, productId: string, patch: (p: Product) => Partial<Product>) =>
   editProducts(shopId, (list) => list.map((p) => (p.id === productId ? { ...p, ...patch(p) } : p)));
 
+/** Puts a product on sale, or ends its sale (null). */
+export const setDiscount = (shopId: string, productId: string, discount: Discount | null) => patchProduct(shopId, productId, () => ({ discount }));
+
+/** Sets (or with null, ends) the shop's offer on the whole basket. */
+export const savePromo = (shopId: string, promo: ShopPromo | null) => updateDoc(doc(db(), "shops", shopId), { promo: promo ? clean(promo) : null });
+
 // ---- orders -------------------------------------------------------------------------------
 
-/** The shop has checked the buyer's proof (or the money arrived). Tells the buyer. */
+/**
+ * The shop has checked the buyer's proof (or the money arrived). Tells the
+ * buyer. Only for payments to the shop itself: Localink confirms payments made to it.
+ */
 export async function confirmPayment(uid: string, o: OrderDoc, shopName: string) {
+  if (o.payTo === "localink") throw new Error("Localink confirms payments made through Localink.");
   await updateDoc(doc(db(), "orders", o.id), { paymentStatus: "confirmed" });
   if (o.senderId) {
     await notify(
@@ -232,12 +244,14 @@ export async function confirmPayment(uid: string, o: OrderDoc, shopName: string)
 
 /** The groceries were handed over. Tells the buyer and the recipient. */
 export async function releaseOrder(uid: string, o: OrderDoc, shopName: string, handoverUrl: string | null) {
+  // Handing over means a shop-paid order is paid; a Localink-paid one must
+  // already be confirmed by Localink (the rules refuse it otherwise).
   await updateDoc(doc(db(), "orders", o.id), {
     handoverUrl,
     status: "collected",
     collectedAt: Date.now(),
     collectedBy: o.recipient.name,
-    paymentStatus: "confirmed",
+    ...(o.payTo === "localink" ? {} : { paymentStatus: "confirmed" }),
   });
   const done = { title: "Groceries collected", body: `${o.recipient.name} collected order #${o.id} at ${shopName}.`, icon: "check_circle", color: "secondary" as const, orderId: o.id };
   await Promise.all([

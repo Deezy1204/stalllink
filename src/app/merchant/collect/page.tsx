@@ -200,7 +200,7 @@ export default function CollectPage() {
           <Button className="mt-5 h-12 w-full text-base" disabled={!allChecked || !paid || progress != null} loading={busy} onClick={release}>
             Confirm handover ({usd(orderTotal(o))})
           </Button>
-          {(!allChecked || !paid) && <p className="mt-2 text-center text-xs text-ink-3">{!paid ? "Confirm the payment above first." : "Tick every item to enable handover."}</p>}
+          {(!allChecked || !paid) && <p className="mt-2 text-center text-xs text-ink-3">{!paid ? (o.payTo === "localink" ? "Wait until Localink confirms the payment." : "Confirm the payment above first.") : "Tick every item to enable handover."}</p>}
         </Card>
       )}
 

@@ -23,7 +23,7 @@ import { Icon } from "./icons";
 export function Card({ children, className = "", index }: { children: ReactNode; className?: string; index?: number }) {
   const bg = /(^|\s)bg-/.test(className) ? "" : "bg-white";
   return (
-    <div style={index == null ? undefined : ({ "--i": index } as React.CSSProperties)} className={`rounded-2xl border border-line ${bg} shadow-[0_2px_12px_rgba(20,27,43,0.04)] ${className}`}>
+    <div style={index == null ? undefined : ({ "--i": index } as React.CSSProperties)} className={`rounded-2xl border border-line ${bg} shadow-[0_2px_12px_rgba(19,38,31,0.05)] ${className}`}>
       {children}
     </div>
   );

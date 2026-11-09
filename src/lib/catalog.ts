@@ -1,5 +1,5 @@
 // Product sizes, shop categories, opening hours and payment types, written
-// the same way the mobile app writes them (stall_link/lib/data/models.dart),
+// the same way the mobile app writes them (Localink/lib/data/models.dart),
 // so a shop edited on the web reads exactly the same in the app.
 
 import type { BulkPrice, DayHours, OrderDoc, PaymentOption, PaymentStatus, Product, ShopDoc, Variation } from "./types";

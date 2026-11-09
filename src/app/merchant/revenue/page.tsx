@@ -9,7 +9,7 @@ import { NoShop } from "@/components/merchant/OrderBits";
 import { Button, Card, PageHeader, Spinner, useToast } from "@/components/ui";
 import { dayMonthYear, monthKey, monthLabel } from "@/lib/catalog";
 import { download, earningsCsv, earningsPdf } from "@/lib/reports";
-import { orderTotal, paymentTitle, statusLabel, usd, type OrderDoc } from "@/lib/types";
+import { orderShare, paymentTitle, statusLabel, usd, viaLocalink, type OrderDoc } from "@/lib/types";
 
 interface Month {
   key: string;
@@ -21,7 +21,8 @@ interface Month {
 }
 
 function summarise(key: string, orders: OrderDoc[]): Month {
-  const sum = (l: OrderDoc[]) => l.reduce((s, o) => s + orderTotal(o), 0);
+  // The shop's share: Localink's service fee is not the shop's revenue.
+  const sum = (l: OrderDoc[]) => l.reduce((s, o) => s + orderShare(o), 0);
   return {
     key,
     orders,
@@ -32,7 +33,7 @@ function summarise(key: string, orders: OrderDoc[]): Month {
   };
 }
 
-/** What the active shop sold through StallLink, month by month. Buyers pay the shop directly, so this is a sales record, not a balance. */
+/** What the active shop sold through Localink, month by month (its share, without Localink's service fee). Money Localink holds is on Earnings. */
 export default function RevenuePage() {
   const { shop, shopOrders, loaded } = useMerchant();
   const toast = useToast();
@@ -63,7 +64,7 @@ export default function RevenuePage() {
     setBusy(`${m.key}-${kind}`);
     try {
       const blob = kind === "pdf" ? await earningsPdf(`${shop!.name} - ${monthLabel(m.key)}`, m.orders) : earningsCsv(m.orders);
-      download(blob, `StallLink-${m.key}.${kind}`);
+      download(blob, `Localink-${m.key}.${kind}`);
       toast("Report saved.");
     } catch (e) {
       toast(`Could not make the report: ${(e as Error).message}`, "error");
@@ -136,9 +137,9 @@ export default function RevenuePage() {
                           </span>
                           <span className="min-w-0 flex-1">
                             <span className="block truncate font-semibold">#{o.id} · {o.recipient?.name}</span>
-                            <span className="block truncate text-xs text-ink-3">{dayMonthYear(o.createdAt)} · {statusLabel[o.status]} · {paymentTitle(o.payment)}</span>
+                            <span className="block truncate text-xs text-ink-3">{dayMonthYear(o.createdAt)} · {statusLabel[o.status]} · {viaLocalink(o) ? "via Localink" : paymentTitle(o.payment)}</span>
                           </span>
-                          <span className="font-semibold">{usd(orderTotal(o))}</span>
+                          <span className="font-semibold">{usd(orderShare(o))}</span>
                         </Link>
                       </li>
                     ))}
@@ -154,7 +155,7 @@ export default function RevenuePage() {
           </Card>
         ))}
       </div>
-      <p className="group mt-6 flex items-center justify-center gap-1.5 text-center text-xs text-ink-3"><Icon name="cash" className="size-4" /> Buyers pay your shop directly. StallLink does not hold your money.</p>
+      <p className="group mt-6 flex items-center justify-center gap-1.5 text-center text-xs text-ink-3"><Icon name="cash" className="size-4" /> Your share of each sale. Sales paid through Localink are held for you: see <Link href="/merchant/earnings" className="font-semibold text-brand hover:underline">Earnings</Link>.</p>
     </div>
   );
 }

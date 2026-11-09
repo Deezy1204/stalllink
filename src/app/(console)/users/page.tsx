@@ -53,7 +53,7 @@ export default function UsersPage() {
 
   return (
     <>
-      <PageHeader title="Users" subtitle="Everyone with a StallLink account. Any account can buy and run shops." />
+      <PageHeader title="Users" subtitle="Everyone with a Localink account. Any account can buy and run shops." />
       <div className="mb-4 grid gap-3 md:grid-cols-[1fr_auto] md:items-center">
         <SearchInput placeholder="Search name, email, phone, city…" value={q} onChange={(e) => setQ(e.target.value)} />
         <Tabs
