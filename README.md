@@ -48,6 +48,7 @@ Notes:
 | Payouts | Payouts to send, with what each is made of (sales at full price, Localink's discount on them); mark paid or failed |
 | Payment settings | Localink's accounts, plan prices, fees and limits (products and branches per plan), Localink's discount for big baskets, Paynow and Didit keys (write-only) |
 | Users | Search/filter, **suspend / restore** accounts, **make admin** |
+| Send notification | To all users, merchants, customers, or people found by name, email or phone (each shown as Merchant or Customer); arrives in the app and as a push message; history of what was sent |
 | Orders | Search/filter by status and payment, order details, open the buyer's proof of payment |
 | Shop requests | Shops buyers recommended; mark contacted / onboarded / dismissed |
 | Reviews | Every review of a shop or of Localink; filter to 1–2 stars, **hide** (leaves public lists and ratings) or delete |

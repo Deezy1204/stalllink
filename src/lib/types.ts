@@ -441,3 +441,21 @@ export const usd = (v: number) => new Intl.NumberFormat("en-US", { style: "curre
 
 export const shortDate = (d?: Date | number | null) =>
   d == null ? "—" : new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" }).format(typeof d === "number" ? new Date(d) : d);
+
+/** A notification an admin sent to app users (`broadcasts`); the Cloud Functions deliver it. */
+export interface BroadcastDoc {
+  id: string;
+  title: string;
+  body: string;
+  kind: "announcement" | "offer" | "important";
+  audience: "all" | "merchants" | "customers" | "selected";
+  userIds?: string[];
+  createdBy: string;
+  createdByName?: string;
+  status: "pending" | "sent" | "failed";
+  /** How many people it went to (set once sent). */
+  recipients?: number;
+  error?: string;
+  createdAt: number;
+  sentAt?: number;
+}

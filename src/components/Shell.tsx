@@ -19,6 +19,7 @@ export function Shell({ children }: { children: ReactNode }) {
     { href: "/", label: "Dashboard", icon: "dashboard" },
     { href: "/shops", label: "Shops", icon: "store", count: shops.filter((s) => !s.verified && !s.suspended).length },
     { href: "/users", label: "Users", icon: "users" },
+    { href: "/notify", label: "Send notification", icon: "bell" },
     { href: "/orders", label: "Orders", icon: "receipt" },
     // Money sent to Localink: proofs to check (orders and Pro), and payouts to send.
     {
