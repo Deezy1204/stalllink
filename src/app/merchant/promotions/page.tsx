@@ -9,6 +9,7 @@ import { Badge, Button, Card, Input, Modal, PageHeader, Pill, Spinner, useToast 
 import { fromPrice } from "@/lib/catalog";
 import { savePromo, setDiscount } from "@/lib/merchant";
 import { applyDiscount, promoHeadline } from "@/lib/money";
+import { planOf, shopOffers, TRIAL_DAYS } from "@/lib/plans";
 import { isActive, shortDate, usd, type Discount, type Product, type ShopPromo } from "@/lib/types";
 
 const QUICK = [5, 10, 15, 20, 25, 30, 50];
@@ -50,6 +51,13 @@ export default function PromotionsPage() {
 
       <h2 className="font-bold">Shop offer</h2>
       <p className="mb-3 text-sm text-ink-3">One offer on the whole basket, e.g. &quot;10% off orders over $30&quot;. Buyers see it on your shop and get it at checkout.</p>
+      {!shopOffers(planOf(shop)) && (
+        <Link href="/merchant/plan" className="mb-3 block rounded-2xl bg-accent-50 px-4 py-3 text-sm text-accent-800 hover:bg-accent/15">
+          {live
+            ? "Your offer is saved but buyers do not see it on Basic. It comes back on Standard and up. ›"
+            : `Shop offers come with Standard and up (try one free for ${TRIAL_DAYS} days). You can set one up now: it shows once you upgrade. ›`}
+        </Link>
+      )}
       <Card className={`flex flex-wrap items-center gap-4 p-4 ${live ? "border-accent/50 bg-accent-50" : ""}`}>
         <div className="min-w-0 flex-1">
           <p className="font-bold">{promo ? `${promo.label ? `${promo.label} · ` : ""}${promoHeadline(promo)}` : "No shop offer"}</p>

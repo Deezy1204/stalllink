@@ -11,11 +11,12 @@ import { RatingChip } from "@/components/Reviews";
 import { Card, Empty, PageHeader, Spinner } from "@/components/ui";
 import { monthKey } from "@/lib/catalog";
 import { promoHeadline } from "@/lib/money";
-import { isActive, isPro, orderShare, usd } from "@/lib/types";
+import { activeTrial, canTrial, hiddenSummary, PAID_PLANS, paidUntil, PAYOUT_LABEL, PLAN_LABEL, planOf, shopOffers, TRIAL_DAYS } from "@/lib/plans";
+import { isActive, isVerified, kycLabel, orderShare, usd } from "@/lib/types";
 
 /** Merchant dashboard for the active shop (the app's Overview tab). */
 export default function MerchantOverview() {
-  const { shop, shopOrders, loaded, error, shops, appReview, wallet, config } = useMerchant();
+  const { shop, shopOrders, loaded, error, shops, appReview, wallet, config, profile } = useMerchant();
 
   if (!loaded) return <div className="flex justify-center py-20"><Spinner /></div>;
   if (!shop) return <NoShop what="list products and receive orders" />;
@@ -27,9 +28,13 @@ export default function MerchantOverview() {
   const sold = thisMonth.reduce((s, o) => s + orderShare(o), 0);
   const items = thisMonth.reduce((s, o) => s + o.items.reduce((a, i) => a + i.qty, 0), 0);
   const toCheck = shopOrders.filter((o) => o.payTo !== "localink" && o.paymentStatus === "proofSent").length;
-  const pro = isPro(shop);
+  const plan = planOf(shop);
+  const trial = activeTrial(shop);
+  const until = paidUntil(shop);
+  const hidden = hiddenSummary(shop, config.limits);
+  const kyc = profile.kyc?.status ?? "none";
   const deals = (shop.products ?? []).filter((p) => p.available !== false && isActive(p.discount)).length;
-  const promo = isActive(shop.promo) ? shop.promo! : null;
+  const promo = isActive(shop.promo) && shopOffers(plan) ? shop.promo! : null;
   const places = shopPlaces(shop);
   const products = shop.products ?? [];
   const low = products.filter((p) => p.stock <= 5).length;
@@ -65,7 +70,11 @@ export default function MerchantOverview() {
             <div className="min-w-0 flex-1">
               <p className="flex items-center gap-1.5 text-xl font-extrabold">
                 {shop.name}
-                {shop.verified && <span className="text-mint-600"><Icon name="verified" className="size-5" title="Verified by Localink" play /></span>}
+                {isVerified(shop) ? (
+                  <span className="text-mint-600"><Icon name="verified" className="size-5" title="Verified by Localink, owner identity checked" play /></span>
+                ) : (
+                  <span className="rounded-full bg-surface-2 px-2 py-0.5 text-xs font-bold text-ink-2" title={shop.ownerVerified ? "Localink has not verified this shop yet" : "Your identity is not verified yet"}>Not verified</span>
+                )}
               </p>
               <p className="text-sm text-ink-3">{[shop.standNo, shop.suburb, shop.city].filter(Boolean).join(" · ")}</p>
               <Link href="/merchant/reviews" className="mt-1 inline-flex rounded-lg hover:underline" title="See your reviews">
@@ -78,12 +87,26 @@ export default function MerchantOverview() {
         </div>
       </Card>
 
-      {(shop.suspended || !shop.verified) && (
+      {kyc !== "approved" && (
+        <Link href="/merchant/verify" className="mt-3 flex items-center gap-3 rounded-2xl border border-brand/20 bg-brand-50 px-4 py-3 text-sm text-ink hover:bg-brand-50/70">
+          <Icon name="shieldCheck" className="size-5 shrink-0 text-brand" />
+          <span className="flex-1">
+            <b>{kyc === "inReview" ? "Your identity is being reviewed." : "Verify your identity."}</b>{" "}
+            {kyc === "inReview" ? "Your shops show “Not verified” until Didit finishes." : `Your shops show “Not verified” and Localink cannot verify them until you do (${kycLabel[kyc].toLowerCase()}). Two minutes with Didit. ›`}
+          </span>
+        </Link>
+      )}
+      {(shop.suspended || (!shop.verified && shop.ownerVerified)) && (
         <p className={`mt-3 rounded-2xl px-4 py-3 text-sm ${shop.suspended ? "bg-red-50 text-red-800" : "bg-amber-50 text-amber-900"}`}>
           {shop.suspended
             ? "Localink has paused this shop, so buyers cannot see it. Contact support."
-            : "Localink is checking this shop. Buyers can already order; the verified badge appears once it is approved."}
+            : "Localink is checking this shop. Buyers can already order; the verified tick appears once it is approved."}
         </p>
+      )}
+      {hidden && (
+        <Link href="/merchant/plan" className="mt-3 block rounded-2xl bg-accent-50 px-4 py-3 text-sm text-accent-800 hover:bg-accent/15">
+          Saved but hidden from buyers on {PLAN_LABEL[plan]}: {hidden}. Nothing was deleted: it shows again when you upgrade. ›
+        </Link>
       )}
 
       <div className="stagger mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -113,15 +136,21 @@ export default function MerchantOverview() {
           <Card className="h-full p-4 transition group-hover:-translate-y-0.5 group-hover:shadow-md">
             <p className="text-xs font-semibold text-ink-3">Earnings with Localink</p>
             <p className="mt-1 text-2xl font-extrabold">{usd(wallet?.balance ?? 0)}</p>
-            <p className="text-xs text-ink-3">{wallet?.pending ? `${usd(wallet.pending)} pending collection · ` : ""}paid out {pro ? "daily" : "weekly"}</p>
+            <p className="text-xs text-ink-3">{wallet?.pending ? `${usd(wallet.pending)} pending collection · ` : ""}paid out {PAYOUT_LABEL[plan].toLowerCase()}</p>
           </Card>
         </Link>
         <Link href="/merchant/plan" className="group">
-          <Card className={`h-full p-4 transition group-hover:-translate-y-0.5 group-hover:shadow-md ${pro ? "" : "border-accent/40 bg-accent-50"}`}>
+          <Card className={`h-full p-4 transition group-hover:-translate-y-0.5 group-hover:shadow-md ${plan !== "basic" ? "" : "border-accent/40 bg-accent-50"}`}>
             <p className="text-xs font-semibold text-ink-3">Plan</p>
-            <p className="mt-1 text-2xl font-extrabold">{pro ? "Pro" : "Basic"}</p>
+            <p className="mt-1 text-2xl font-extrabold">{PLAN_LABEL[plan]}{trial ? " trial" : ""}</p>
             <p className="text-xs text-ink-3">
-              {pro ? `Until ${new Date(shop.proUntil!).toLocaleDateString("en-GB", { day: "numeric", month: "short" })} · no service fee` : `Get Pro (${usd(config.proMonthly)}/month): no fee, your own payments ›`}
+              {trial
+                ? `Until ${new Date(trial.endsAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })} or ${trial.maxOrders - trial.orders} more orders`
+                : until
+                  ? `Until ${new Date(until).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`
+                  : PAID_PLANS.some((p) => canTrial(shop, p))
+                    ? `Try Standard, Pro or Max free for ${TRIAL_DAYS} days ›`
+                    : `From ${usd(config.standardMonthly)}/month: lower fees, more products ›`}
             </p>
           </Card>
         </Link>

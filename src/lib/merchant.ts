@@ -46,6 +46,7 @@ const toProfile = (id: string, d: Record<string, unknown>): UserDoc => ({
   city: (d.city as string) ?? "",
   suspended: d.suspended === true,
   findable: d.findable !== false,
+  kyc: (d.kyc as UserDoc["kyc"]) ?? { status: "none" },
 });
 
 /**
@@ -180,8 +181,21 @@ async function notify(
  * Functions keep it); the rest is merged.
  */
 export async function saveShop(uid: string, shop: ShopDoc, isNew: boolean) {
-  // `proUntil` too: only Localink sets the plan.
-  const { products: _products, verified: _verified, suspended: _suspended, rating: _rating, reviewCount: _reviewCount, proUntil: _proUntil, ...settings } = shop;
+  // The plan, trial and owner check too: only Localink sets them.
+  const {
+    products: _products,
+    verified: _verified,
+    suspended: _suspended,
+    rating: _rating,
+    reviewCount: _reviewCount,
+    proUntil: _proUntil,
+    plan: _plan,
+    planUntil: _planUntil,
+    trial: _trial,
+    trialsUsed: _trialsUsed,
+    ownerVerified: _ownerVerified,
+    ...settings
+  } = shop;
   const categories = settings.categories ?? [];
   const hours = hoursSummary(settings.schedule ?? []);
   const data: Record<string, unknown> = {

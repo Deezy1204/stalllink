@@ -5,10 +5,11 @@ import { useMemo, useState } from "react";
 import { useAdminData } from "@/components/AdminData";
 import { Icon } from "@/components/icons";
 import { LocationList, LocationsMap, shopPlaces } from "@/components/Locations";
-import { Badge, Button, Card, Empty, Modal, PageHeader, SearchInput, Tabs, useConfirm, useToast } from "@/components/ui";
+import { Badge, Button, Card, Empty, Modal, PageHeader, Pill, SearchInput, Tabs, useConfirm, useToast } from "@/components/ui";
 import { deleteShop, setShopFlags } from "@/lib/data";
-import { endPro, grantPro } from "@/lib/money";
-import { isPro, orderTotal, paymentTitle, shopCategories, shortDate, usd, type ShopDoc } from "@/lib/types";
+import { endPlan, grantPlan } from "@/lib/money";
+import { activeTrial, PAID_PLANS, paidPlan, paidUntil, PLAN_LABEL, planOf, takesPayments, type Plan } from "@/lib/plans";
+import { kycLabel, orderTotal, paymentTitle, shopCategories, shortDate, usd, type ShopDoc } from "@/lib/types";
 
 type Filter = "all" | "verify" | "verified" | "suspended";
 
@@ -23,8 +24,12 @@ export default function ShopsPage() {
   const [filter, setFilter] = useState<Filter>("all");
   const [busy, setBusy] = useState<string | null>(null);
   const [open, setOpen] = useState<ShopDoc | null>(null);
+  const [granting, setGranting] = useState<ShopDoc | null>(null);
+  const [grantPick, setGrantPick] = useState<Plan>("pro");
 
   const owner = (s: ShopDoc) => users.find((u) => u.id === s.ownerId);
+  /** The owner passed the identity check (Didit): only then can the shop be verified. */
+  const ownerChecked = (s: ShopDoc) => owner(s)?.kyc?.status === "approved" || s.ownerVerified === true;
   const sales = (s: ShopDoc) => orders.filter((o) => o.stallId === s.id && o.status !== "cancelled");
 
   const list = useMemo(() => {
@@ -53,19 +58,23 @@ export default function ShopsPage() {
     }
   }
 
-  const toggleVerify = (s: ShopDoc) => act(s.id, () => setShopFlags(s.id, { verified: !s.verified }), s.verified ? "Verification removed." : `${s.name} is verified.`);
+  const toggleVerify = (s: ShopDoc) => {
+    if (!s.verified && !ownerChecked(s)) return toast(`${owner(s)?.name || "The owner"} has not verified their identity yet. The shop can be verified once they have.`, "error");
+    act(s.id, () => setShopFlags(s.id, { verified: !s.verified }), s.verified ? "Verification removed." : `${s.name} is verified.`);
+  };
   const toggleSuspend = async (s: ShopDoc) => {
     if (!s.suspended && !(await confirm({ title: `Suspend ${s.name}?`, message: "Buyers will not see this shop until you restore it.", confirm: "Suspend", danger: true }))) return;
     act(s.id, () => setShopFlags(s.id, { suspended: !s.suspended }), s.suspended ? "Shop restored." : "Shop suspended.");
   };
-  /** A free month of Pro (e.g. to welcome a shop), or ending Pro now. */
-  const togglePro = async (s: ShopDoc) => {
-    if (isPro(s)) {
-      if (!(await confirm({ title: `End Pro for ${s.name}?`, message: "The shop goes back to Basic now: buyers pay through Localink with a service fee, and payouts are weekly. It is not refunded.", confirm: "End Pro", danger: true }))) return;
-      act(s.id, () => endPro(s), "Pro ended.");
+  /** A free month of a plan (e.g. to welcome a shop), or ending the paid plan now. */
+  const togglePlan = async (s: ShopDoc) => {
+    const paid = paidPlan(s);
+    if (paid !== "basic") {
+      if (!(await confirm({ title: `End ${PLAN_LABEL[paid]} for ${s.name}?`, message: "The shop goes back to Basic now (it is not refunded). Nothing it set up is deleted: what Basic does not include is hidden from buyers.", confirm: `End ${PLAN_LABEL[paid]}`, danger: true }))) return;
+      act(s.id, () => endPlan(s), `${PLAN_LABEL[paid]} ended.`);
     } else {
-      if (!(await confirm({ title: `Give ${s.name} a month of Pro?`, message: "Free of charge: no service fee, its own payment details, daily payouts for 30 days.", confirm: "Give a month" }))) return;
-      act(s.id, () => grantPro(s, 30), "Pro switched on for 30 days.");
+      setGrantPick("pro");
+      setGranting(s);
     }
   };
 
@@ -99,6 +108,10 @@ export default function ShopsPage() {
           {list.map((s, i) => {
             const o = owner(s);
             const total = sales(s).reduce((a, x) => a + orderTotal(x), 0);
+            const plan = planOf(s);
+            const until = paidUntil(s);
+            const trial = activeTrial(s);
+            const checked = ownerChecked(s);
             return (
               <Card key={s.id} index={i} className="p-4">
                 <button className="flex w-full items-start gap-3 text-left" onClick={() => setOpen(s)}>
@@ -115,7 +128,10 @@ export default function ShopsPage() {
                 </button>
                 <div className="mt-3 flex flex-wrap gap-1.5">
                   <Badge tone={s.verified ? "success" : "warning"}>{s.verified ? "Verified" : "Not verified"}</Badge>
-                  <Badge tone={isPro(s) ? "dark" : "neutral"}>{isPro(s) ? `Pro until ${shortDate(s.proUntil)}` : "Basic"}</Badge>
+                  <Badge tone={checked ? "success" : "danger"}>{checked ? "Owner ID checked" : `Owner: ${kycLabel[o?.kyc?.status ?? "none"]}`}</Badge>
+                  <Badge tone={plan === "basic" ? "neutral" : "dark"}>
+                    {trial ? `${PLAN_LABEL[plan]} trial · ${trial.maxOrders - trial.orders} orders, until ${shortDate(trial.endsAt)}` : until ? `${PLAN_LABEL[plan]} until ${shortDate(until)}` : PLAN_LABEL[plan]}
+                  </Badge>
                   {s.suspended && <Badge tone="danger">Suspended</Badge>}
                   <Badge>{s.products?.length ?? 0} products</Badge>
                   {!!s.branches?.length && (
@@ -127,12 +143,20 @@ export default function ShopsPage() {
                   <Badge tone={s.reviewCount && (s.rating ?? 0) < 3 ? "danger" : "neutral"}>
                     <Icon name="star" className="size-3.5" strokeWidth={2} /> {s.reviewCount ? `${(s.rating ?? 0).toFixed(1)} (${s.reviewCount})` : "No reviews"}
                   </Badge>
-                  {isPro(s) && <Badge tone={s.paymentOptions?.length ? "neutral" : "warning"}>{s.paymentOptions?.length ?? 0} own payment methods</Badge>}
+                  {takesPayments(plan) && <Badge tone={s.paymentOptions?.length ? "neutral" : "warning"}>{s.paymentOptions?.length ?? 0} own payment methods</Badge>}
                 </div>
                 <div className="mt-4 flex flex-wrap gap-2 border-t border-line pt-3">
-                  <Button variant={s.verified ? "secondary" : "primary"} loading={busy === s.id} onClick={() => toggleVerify(s)}>{s.verified ? "Unverify" : "Verify"}</Button>
+                  <Button
+                    variant={s.verified ? "secondary" : "primary"}
+                    loading={busy === s.id}
+                    disabled={!s.verified && !checked}
+                    title={!s.verified && !checked ? "The owner must verify their identity first" : undefined}
+                    onClick={() => toggleVerify(s)}
+                  >
+                    {s.verified ? "Unverify" : checked ? "Verify" : "Verify (owner ID needed)"}
+                  </Button>
                   <Button variant="secondary" disabled={busy === s.id} onClick={() => toggleSuspend(s)}>{s.suspended ? "Restore" : "Suspend"}</Button>
-                  <Button variant="ghost" disabled={busy === s.id} onClick={() => togglePro(s)}>{isPro(s) ? "End Pro" : "Give a month of Pro"}</Button>
+                  <Button variant="ghost" disabled={busy === s.id} onClick={() => togglePlan(s)}>{paidPlan(s) !== "basic" ? `End ${PLAN_LABEL[paidPlan(s)]}` : "Give a free month"}</Button>
                   <Button variant="ghost" onClick={() => setOpen(s)}>Details</Button>
                 </div>
               </Card>
@@ -140,6 +164,31 @@ export default function ShopsPage() {
           })}
         </div>
       )}
+
+      <Modal
+        open={granting != null}
+        onClose={() => setGranting(null)}
+        title={`Give ${granting?.name ?? ""} a free month`}
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setGranting(null)}>Cancel</Button>
+            <Button
+              onClick={() => {
+                const s = granting!;
+                setGranting(null);
+                act(s.id, () => grantPlan(s, grantPick, 30), `${PLAN_LABEL[grantPick]} switched on for 30 days.`);
+              }}
+            >
+              Give a month of {PLAN_LABEL[grantPick]}
+            </Button>
+          </>
+        }
+      >
+        <p className="mb-3 text-sm text-ink-2">Free of charge, for 30 days. The shop gets everything the plan includes; afterwards it goes back to Basic unless it pays.</p>
+        <div className="flex flex-wrap gap-2">
+          {PAID_PLANS.map((p) => <Pill key={p} selected={grantPick === p} onClick={() => setGrantPick(p)}>{PLAN_LABEL[p]}</Pill>)}
+        </div>
+      </Modal>
 
       <Modal
         open={open != null}

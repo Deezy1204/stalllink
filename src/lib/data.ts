@@ -31,6 +31,7 @@ const toUser = (id: string, d: DocumentData): UserDoc => ({
   role: d.role === "merchant" ? "merchant" : "customer",
   city: d.city ?? "",
   suspended: d.suspended === true,
+  kyc: d.kyc ?? { status: "none" },
   createdAt: date(d.createdAt),
 });
 

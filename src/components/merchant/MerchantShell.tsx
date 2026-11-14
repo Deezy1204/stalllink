@@ -7,7 +7,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { BrandHeader, BrandInline } from "@/components/Brand";
 import { Icon, type IconName } from "@/components/icons";
-import { isPro } from "@/lib/types";
+import { planName, planOf } from "@/lib/plans";
 import { useMerchant } from "./MerchantData";
 
 export function ShopThumb({ src, name, className = "size-10" }: { src?: string; name: string; className?: string }) {
@@ -96,7 +96,8 @@ export function MerchantShell({ children }: { children: ReactNode }) {
     { href: "/merchant/revenue", label: "Revenue", icon: "chart" },
     { href: "/merchant/earnings", label: "Earnings", icon: "cash" },
     { href: "/merchant/promotions", label: "Discounts & offers", icon: "gift" },
-    { href: "/merchant/plan", label: isPro(shop) ? "Plan: Pro" : "Plan: Basic", icon: "sparkles", alert: !isPro(shop) },
+    { href: "/merchant/plan", label: `Plan: ${planName(shop)}`, icon: "sparkles", alert: planOf(shop) === "basic" },
+    { href: "/merchant/verify", label: profile.kyc?.status === "approved" ? "Identity: verified" : "Verify your identity", icon: "shieldCheck", count: profile.kyc?.status === "approved" ? 0 : 1, alert: profile.kyc?.status !== "approved" },
     { href: "/merchant/reviews", label: "Reviews", icon: "star" },
     { href: "/merchant/shop", label: "Shop settings", icon: "store" },
     { href: "/merchant/notifications", label: "Notifications", icon: "bell", count: unread, alert: unread > 0 },

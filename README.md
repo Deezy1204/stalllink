@@ -25,6 +25,9 @@ merchant console; the sidebars link the two for admins who also run shops.
 | Reviews | What buyers say about the active shop: rating, star breakdown, every review |
 | Rate Localink | Rate and review Localink itself (one review, editable), and read everyone's reviews of it |
 | Profile | Name, phone, city, "Let people find me" |
+| Plan | Basic, Standard, Pro and Max with prices; free 7-day / 10-order trials; buy or renew any plan (earnings, online, transfer) |
+| Earnings | Balance, payout schedule for the plan, each payout's breakdown (purchased, discounted by Localink, paid to you) |
+| Verify your identity | The Didit identity check shop owners need before Localink can verify their shops |
 
 Notes:
 
@@ -41,7 +44,9 @@ Notes:
 | Page | |
 |---|---|
 | Dashboard | Users, merchants, shops, sales this month, 6-month chart, shops to verify, recent orders |
-| Shops | Search/filter, **verify**, **suspend / restore** (hides the shop from buyers), delete, see payment methods, hours, branches, products |
+| Shops | Search/filter, **verify** (only once the owner's identity is verified), **suspend / restore** (hides the shop from buyers), give a free month of any plan, delete, see payment methods, hours, branches, products |
+| Payouts | Payouts to send, with what each is made of (sales at full price, Localink's discount on them); mark paid or failed |
+| Payment settings | Localink's accounts, plan prices, fees and limits (products and branches per plan), Localink's discount for big baskets, Paynow and Didit keys (write-only) |
 | Users | Search/filter, **suspend / restore** accounts, **make admin** |
 | Orders | Search/filter by status and payment, order details, open the buyer's proof of payment |
 | Shop requests | Shops buyers recommended; mark contacted / onboarded / dismissed |
@@ -88,8 +93,12 @@ For another project copy `.env.example` to `.env.local` and fill it in.
    - Sign in on this site. From then on, add every other admin from the
      **Admins** page (or the app's Admin console).
 3. Google sign-in on the web needs **Authentication → Sign-in method → Google**
-   enabled. `localhost` is allowed by default; add your hosting domain under
-   **Authentication → Settings → Authorized domains** when you deploy.
+   enabled, and the address the console (or the Flutter web app) is opened on
+   listed under **Authentication → Settings → Authorized domains**. `localhost`
+   is there by default, but `127.0.0.1`, a LAN address such as `192.168.x.x`
+   (opening the dev server from a phone) and your hosting domain are not:
+   otherwise Google sign-in fails with `auth/unauthorized-domain` (the login
+   page now says which address to add).
 
 ## Deploy
 

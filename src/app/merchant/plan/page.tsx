@@ -5,28 +5,44 @@ import { useEffect, useState } from "react";
 import { Icon } from "@/components/icons";
 import { useMerchant } from "@/components/merchant/MerchantData";
 import { NoShop } from "@/components/merchant/OrderBits";
-import { Badge, Button, Card, Input, Modal, PageHeader, Pill, Spinner, Switch, useToast } from "@/components/ui";
+import { Badge, Button, Card, Input, Modal, PageHeader, Pill, Spinner, Switch, useConfirm, useToast } from "@/components/ui";
 import { paymentSummary } from "@/lib/catalog";
-import { PRO_DAYS, renewWithCredits, saveWalletSettings, startOnlinePlanPayment, submitPlanPayment, watchShopPlanPayments } from "@/lib/money";
-import { cents, isPro, paymentTitle, shortDate, usd, type PaymentsConfig, type PlanPaymentDoc } from "@/lib/types";
+import { PRO_DAYS, renewWithCredits, saveWalletSettings, startOnlinePlanPayment, startTrial, submitPlanPayment, watchShopPlanPayments } from "@/lib/money";
+import {
+  activeTrial,
+  canTrial,
+  hiddenSummary,
+  isPaidPlan,
+  lapsedPlan,
+  paidPlan,
+  paidUntil,
+  PLAN_LABEL,
+  PLAN_TAGLINE,
+  planFeatures,
+  planOf,
+  PLANS,
+  priceOf,
+  RANK,
+  TRIAL_DAYS,
+  TRIAL_ORDERS,
+  type Plan,
+} from "@/lib/plans";
+import { cents, paymentTitle, shortDate, usd, type PlanPaymentDoc } from "@/lib/types";
 
-/** What Basic and Pro shops get (the same comparison as the app's Plans screen). */
-function features(c: PaymentsConfig) {
-  return [
-    { title: "Service fee on your orders", basic: `${c.serviceFeePercent}% added to what buyers pay`, pro: "None", basicOk: false },
-    { title: "Take payments yourself", basic: "No: buyers pay Localink, you get paid out", pro: "Yes: your EcoCash, bank and other accounts", basicOk: false },
-    { title: "Payouts of Localink payments", basic: "Weekly, on Mondays", pro: "Daily" },
-    { title: "Online payments and Localink credits", basic: "Yes, through Localink", pro: "Yes, as well as your own" },
-    { title: "Discounts and shop offers", basic: "Yes", pro: "Yes" },
-    { title: "Spend your earnings on Pro or at other shops", basic: "Yes", pro: "Yes" },
-  ];
-}
+const planTone: Record<Plan, string> = {
+  basic: "",
+  standard: "border-brand/30",
+  pro: "border-accent/50 bg-accent-50",
+  max: "border-ink/30",
+};
 
-/** Basic and Pro side by side, the active shop's plan, and buying or renewing Pro. */
+/** The four plans (one column on phones), the active shop's plan or trial, and buying, renewing or trying a plan. */
 export default function PlanPage() {
   const { shop, user, loaded, config, wallet } = useMerchant();
   const toast = useToast();
-  const [buying, setBuying] = useState(false);
+  const confirm = useConfirm();
+  const [buying, setBuying] = useState<Plan | null>(null);
+  const [trying, setTrying] = useState<Plan | null>(null);
   const [history, setHistory] = useState<PlanPaymentDoc[]>([]);
   const shopId = shop?.id;
 
@@ -35,56 +51,102 @@ export default function PlanPage() {
   if (!loaded) return <div className="flex justify-center py-20"><Spinner /></div>;
   if (!shop) return <NoShop what="choose a plan" />;
 
-  const pro = isPro(shop);
-  const expired = !pro && !!shop.proUntil;
-  const rows = features(config);
+  const plan = planOf(shop);
+  const paid = paidPlan(shop);
+  const until = paidUntil(shop);
+  const trial = activeTrial(shop);
+  const lapsed = lapsedPlan(shop);
+  const hidden = hiddenSummary(shop, config.limits);
+  const dark = plan !== "basic";
+
+  let line: string;
+  if (trial) {
+    const days = Math.ceil((trial.endsAt - Date.now()) / 864e5);
+    line = `Free trial: ${days <= 1 ? "ends today" : `${days} days`} or ${trial.maxOrders - trial.orders} orders left. Then ${PLAN_LABEL[paid]}${until ? ` (paid until ${shortDate(until)})` : " until you pay"}.`;
+  } else if (until) {
+    line = `Paid until ${shortDate(until)}${wallet?.autoRenew !== false ? " · renews from your earnings" : ""}`;
+  } else if (lapsed) {
+    line = `${PLAN_LABEL[lapsed]} ended ${shortDate(shop.planUntil ?? shop.proUntil)}. Your settings are kept: renew any time.`;
+  } else {
+    line = `Free. Try a paid plan free for ${TRIAL_DAYS} days, or upgrade any time.`;
+  }
+
+  async function tryPlan(p: Plan) {
+    const ok = await confirm({
+      title: `Try ${PLAN_LABEL[p]} free`,
+      message: `For ${TRIAL_DAYS} days or ${TRIAL_ORDERS} orders, whichever comes first. Then ${shop!.name} goes back to ${PLAN_LABEL[paid]} until you pay for ${PLAN_LABEL[p]}. Nothing is deleted: anything only ${PLAN_LABEL[p]} has stays saved and is just hidden from buyers.`,
+      confirm: "Start free trial",
+    });
+    if (!ok) return;
+    setTrying(p);
+    const err = await startTrial(user.uid, shop!.id, p);
+    setTrying(null);
+    toast(err ?? `${PLAN_LABEL[p]} trial is on for ${shop!.name}.`, err ? "error" : undefined);
+  }
 
   return (
-    <div className="mx-auto max-w-4xl">
-      <PageHeader
-        title="Plans"
-        subtitle={`${shop.name} · each of your shops has its own plan`}
-        actions={<Button onClick={() => setBuying(true)}><Icon name="sparkles" className="size-4" /> {pro ? "Add Pro months" : expired ? "Renew Pro" : "Get Pro"}</Button>}
-      />
-      <Card className={`flex items-center gap-4 p-5 ${pro ? "bg-ink text-white" : "bg-brand-50/60"}`}>
-        <span className={`flex size-12 items-center justify-center rounded-2xl ${pro ? "bg-accent text-white" : "bg-white text-brand"}`}><Icon name={pro ? "sparkles" : "store"} className="size-6" /></span>
+    <div className="mx-auto max-w-6xl">
+      <PageHeader title="Plans" subtitle={`${shop.name} · each of your shops has its own plan`} />
+      <Card className={`flex items-center gap-4 p-5 ${dark ? "bg-ink text-white" : "bg-brand-50/60"}`}>
+        <span className={`flex size-12 shrink-0 items-center justify-center rounded-2xl ${dark ? "bg-accent text-white" : "bg-white text-brand"}`}><Icon name={dark ? "sparkles" : "store"} className="size-6" /></span>
         <div className="min-w-0 flex-1">
-          <p className="font-bold">{shop.name} is on {pro ? "Pro" : "Basic"}</p>
-          <p className={`text-sm ${pro ? "text-white/70" : "text-ink-3"}`}>
-            {pro
-              ? `Paid until ${shortDate(shop.proUntil)}${wallet?.autoRenew !== false ? " · renews from your earnings" : ""}`
-              : expired
-                ? `Pro ended ${shortDate(shop.proUntil)}. Renew any time.`
-                : "Free. Upgrade any time."}
-          </p>
+          <p className="font-bold">{shop.name} is on {PLAN_LABEL[plan]}{trial ? " (trial)" : ""}</p>
+          <p className={`text-sm ${dark ? "text-white/70" : "text-ink-3"}`}>{line}</p>
         </div>
       </Card>
+      {hidden && (
+        <p className="mt-3 rounded-2xl bg-accent-50 px-4 py-3 text-sm text-accent-800">
+          Saved but hidden from buyers on {PLAN_LABEL[plan]}: {hidden}. Nothing was deleted: it shows again when you upgrade.
+        </p>
+      )}
 
-      <div className="mt-5 grid gap-4 md:grid-cols-2">
-        {(["basic", "pro"] as const).map((plan) => {
-          const current = (plan === "pro") === pro;
+      <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {PLANS.map((p) => {
+          const current = p === plan;
+          const isTrial = trial?.plan === p;
+          const paidHere = paid === p && p !== "basic";
+          const label = paidHere
+            ? "Add another month"
+            : lapsed === p
+              ? `Renew ${PLAN_LABEL[p]}`
+              : paid !== "basic" && RANK[p] < RANK[paid]
+                ? `Switch to ${PLAN_LABEL[p]}`
+                : `${isTrial ? "Keep" : "Get"} ${PLAN_LABEL[p]}`;
           return (
-            <Card key={plan} className={`p-5 ${plan === "pro" ? "border-accent/50 bg-accent-50" : ""} ${current ? "ring-2 ring-brand" : ""}`}>
+            <Card key={p} className={`flex flex-col p-5 ${planTone[p]} ${current ? "ring-2 ring-brand" : ""}`}>
               <div className="flex items-center gap-2">
-                <Badge tone={plan === "pro" ? "dark" : "neutral"}>{plan === "pro" ? "Pro" : "Basic"}</Badge>
-                {current && <Badge tone="brand">Current</Badge>}
+                <Badge tone={p === "max" ? "dark" : p === "pro" ? "warning" : p === "standard" ? "brand" : "neutral"}>{PLAN_LABEL[p]}</Badge>
+                {current && <Badge tone="brand">{isTrial ? "Trial" : "Current"}</Badge>}
               </div>
-              <p className="mt-3 text-3xl font-extrabold">{plan === "pro" ? `${usd(config.proMonthly).replace(".00", "")}` : "$0"}<span className="text-base font-semibold text-ink-3">{plan === "pro" ? " / month" : ""}</span></p>
-              <p className="text-sm text-ink-3">{plan === "pro" ? "Grow faster, keep every cent" : "Start selling for free"}</p>
-              <ul className="mt-4 space-y-3 border-t border-line pt-4">
-                {rows.map((f) => {
-                  const ok = plan === "pro" ? true : f.basicOk !== false;
-                  return (
-                    <li key={f.title} className="flex gap-2.5">
-                      <span className={`mt-0.5 ${ok ? "text-mint-600" : "text-ink-3"}`}><Icon name={ok ? "checkCircle" : "xCircle"} className="size-4" /></span>
-                      <span>
-                        <span className="block text-sm font-semibold">{f.title}</span>
-                        <span className="block text-sm text-ink-3">{plan === "pro" ? f.pro : f.basic}</span>
-                      </span>
-                    </li>
-                  );
-                })}
+              <p className="mt-3 text-3xl font-extrabold">
+                {p === "basic" ? "$0" : usd(priceOf(p, config)).replace(".00", "")}
+                {p !== "basic" && <span className="text-base font-semibold text-ink-3"> / month</span>}
+              </p>
+              <p className="text-sm text-ink-3">{PLAN_TAGLINE[p]}</p>
+              <ul className="mt-4 flex-1 space-y-3 border-t border-line pt-4">
+                {planFeatures(p, config).map((f) => (
+                  <li key={f.title} className="flex gap-2.5">
+                    <span className={`mt-0.5 ${f.ok ? "text-mint-600" : "text-ink-3"}`}><Icon name={f.ok ? "checkCircle" : "xCircle"} className="size-4" /></span>
+                    <span>
+                      <span className="block text-sm font-semibold">{f.title}</span>
+                      <span className="block text-sm text-ink-3">{f.value}</span>
+                    </span>
+                  </li>
+                ))}
               </ul>
+              {isPaidPlan(p) && (
+                <div className="mt-4 space-y-2">
+                  <Button className="w-full" onClick={() => setBuying(p)}>{label} · {usd(priceOf(p, config)).replace(".00", "")}/mo</Button>
+                  {canTrial(shop, p) ? (
+                    <>
+                      <Button variant="secondary" className="w-full" loading={trying === p} onClick={() => tryPlan(p)}>Try free for {TRIAL_DAYS} days</Button>
+                      <p className="text-center text-xs text-ink-3">Or {TRIAL_ORDERS} orders, whichever comes first. No payment needed.</p>
+                    </>
+                  ) : (
+                    (shop.trialsUsed ?? []).includes(p) && !isTrial && !paidHere && <p className="text-center text-xs text-ink-3">Free trial used</p>
+                  )}
+                </div>
+              )}
             </Card>
           );
         })}
@@ -95,31 +157,34 @@ export default function PlanPage() {
           checked={wallet?.autoRenew !== false}
           onChange={(autoRenew) => saveWalletSettings(user.uid, shop.id, { autoRenew }).catch((e: Error) => toast(`Could not save: ${e.message}`, "error"))}
           label="Renew from earnings"
-          description={`When Pro runs out, Localink takes the next month from this shop's earnings if there is enough (${usd(wallet?.balance ?? 0)} now).`}
+          description={`When a paid plan runs out, Localink takes the next month from this shop's earnings if there is enough (${usd(wallet?.balance ?? 0)} now).`}
         />
       </Card>
 
       {history.length > 0 && (
         <>
-          <h2 className="mb-3 mt-8 font-bold">Your Pro payments</h2>
+          <h2 className="mb-3 mt-8 font-bold">Your plan payments</h2>
           <Card className="divide-y divide-line">
-            {history.slice(0, 8).map((p) => (
-              <div key={p.id} className="flex items-center gap-3 px-4 py-3 text-sm">
-                <span className="flex-1">{usd(p.amount)} · {p.months} month{p.months === 1 ? "" : "s"} · {shortDate(p.createdAt)}{p.note ? ` · ${p.note}` : ""}</span>
-                <Badge tone={p.status === "approved" ? "success" : p.status === "rejected" ? "danger" : "warning"}>{p.status === "approved" ? "Pro switched on" : p.status === "rejected" ? "Not accepted" : "Localink is checking"}</Badge>
-              </div>
-            ))}
+            {history.slice(0, 8).map((h) => {
+              const hp = isPaidPlan(h.plan) ? h.plan : "pro";
+              return (
+                <div key={h.id} className="flex items-center gap-3 px-4 py-3 text-sm">
+                  <span className="flex-1">{PLAN_LABEL[hp]} · {usd(h.amount)} · {h.months} month{h.months === 1 ? "" : "s"} · {shortDate(h.createdAt)}{h.note ? ` · ${h.note}` : ""}</span>
+                  <Badge tone={h.status === "approved" ? "success" : h.status === "rejected" ? "danger" : "warning"}>{h.status === "approved" ? `${PLAN_LABEL[hp]} switched on` : h.status === "rejected" ? "Not accepted" : "Localink is checking"}</Badge>
+                </div>
+              );
+            })}
           </Card>
         </>
       )}
 
-      {buying && <BuyPro onClose={() => setBuying(false)} />}
+      {buying && <BuyPlan plan={buying} onClose={() => setBuying(null)} />}
     </div>
   );
 }
 
-/** Buys or renews Pro: from the shop's earnings, online, or by transfer to Localink with proof. */
-function BuyPro({ onClose }: { onClose: () => void }) {
+/** Buys or renews [plan]: from the shop's earnings, online, or by transfer to Localink with proof. */
+function BuyPlan({ plan, onClose }: { plan: Plan; onClose: () => void }) {
   const { shop, user, config, wallet, profile } = useMerchant();
   const toast = useToast();
   const [months, setMonths] = useState(1);
@@ -130,28 +195,33 @@ function BuyPro({ onClose }: { onClose: () => void }) {
   const [busy, setBusy] = useState(false);
   const [tried, setTried] = useState(false);
   if (!shop) return null;
-  const price = cents(config.proMonthly * months);
+  const monthly = priceOf(plan, config);
+  const price = cents(monthly * months);
   const balance = wallet?.balance ?? 0;
   const transfer = config.options.find((o) => o.id === method);
+  const current = paidPlan(shop);
+  const until = paidUntil(shop);
+  const left = until ? (until - Date.now()) / 864e5 : 0;
+  const carry = current !== "basic" && current !== plan && left >= 1 ? Math.floor((left * priceOf(current, config)) / monthly) : null;
 
   async function pay() {
     if (!method) return toast("Choose how to pay.", "error");
     setBusy(true);
     try {
       if (method === "credits") {
-        const err = await renewWithCredits(user.uid, shop!.id, months);
+        const err = await renewWithCredits(user.uid, shop!.id, plan, months);
         if (err) return toast(err, "error");
-        toast("Pro is on. Paid from this shop's earnings.");
+        toast(`${PLAN_LABEL[plan]} is on. Paid from this shop's earnings.`);
       } else if (method === "online") {
-        const r = await startOnlinePlanPayment(user.uid, shop!.id, months);
+        const r = await startOnlinePlanPayment(user.uid, shop!.id, plan, months);
         if (r.error || !r.url) return toast(r.error ?? "Could not start the payment.", "error");
         window.open(r.url, "_blank", "noopener");
-        toast("Pro switches on as soon as your payment goes through.");
+        toast(`${PLAN_LABEL[plan]} switches on as soon as your payment goes through.`);
       } else {
         setTried(true);
         if (!file || !reference.trim() || !payer.trim() || !transfer) return;
-        await submitPlanPayment(user.uid, shop!, months, price, transfer, file, reference.trim(), payer.trim());
-        toast("Proof sent. Localink switches Pro on once it has checked your payment.");
+        await submitPlanPayment(user.uid, shop!, plan, months, price, transfer, file, reference.trim(), payer.trim());
+        toast(`Proof sent. Localink switches ${PLAN_LABEL[plan]} on once it has checked your payment.`);
       }
       onClose();
     } catch (e) {
@@ -181,15 +251,16 @@ function BuyPro({ onClose }: { onClose: () => void }) {
     <Modal
       open
       onClose={onClose}
-      title={isPro(shop) ? "Add Pro months" : `Get Pro for ${shop.name}`}
+      title={current === plan ? `Add ${PLAN_LABEL[plan]} months` : `Get ${PLAN_LABEL[plan]} for ${shop.name}`}
       footer={<><Button variant="secondary" onClick={onClose}>Cancel</Button><Button loading={busy} onClick={pay}>Pay {usd(price)}</Button></>}
     >
-      <p className="text-sm text-ink-3">No service fee on your orders, take payments yourself, and daily payouts.</p>
+      <p className="text-sm text-ink-3">{PLAN_TAGLINE[plan]}.</p>
       <p className="mb-2 mt-4 text-sm font-bold">How long</p>
       <div className="flex flex-wrap gap-2">
         {[1, 3, 6, 12].map((m) => <Pill key={m} selected={months === m} onClick={() => setMonths(m)}>{m} month{m === 1 ? "" : "s"}</Pill>)}
       </div>
-      <p className="mt-2 text-xs text-ink-3">{usd(config.proMonthly)} × {months} = {usd(price)} · {PRO_DAYS * months} days, added to any Pro time left.</p>
+      <p className="mt-2 text-xs text-ink-3">{usd(monthly)} × {months} = {usd(price)} · {PRO_DAYS * months} days{current === plan ? `, added to the ${PLAN_LABEL[plan]} time left` : ""}.</p>
+      {carry != null && <p className="mt-1 text-xs text-brand">The {Math.floor(left)} days left on {PLAN_LABEL[current]} become {carry} days of {PLAN_LABEL[plan]}, before the months you buy now.</p>}
       <p className="mb-2 mt-5 text-sm font-bold">Pay with</p>
       <div className="space-y-2">
         {option("credits", `Earnings of ${shop.name}`, balance + 0.001 >= price ? `${usd(balance)} available · instant` : `Only ${usd(balance)} available`, balance + 0.001 >= price)}
@@ -202,7 +273,7 @@ function BuyPro({ onClose }: { onClose: () => void }) {
           <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
             {transfer.accountNumber && (<><dt className="text-ink-3">Pay to</dt><dd className="font-semibold">{transfer.accountNumber}</dd></>)}
             {transfer.accountName && (<><dt className="text-ink-3">Account name</dt><dd>{transfer.accountName}</dd></>)}
-            <dt className="text-ink-3">Reference</dt><dd className="font-semibold">PRO-{shop.id}</dd>
+            <dt className="text-ink-3">Reference</dt><dd className="font-semibold">{plan.toUpperCase()}-{shop.id}</dd>
           </dl>
           {transfer.instructions && <p className="text-xs text-ink-3">{transfer.instructions}</p>}
           <label className="block text-sm">
@@ -217,3 +288,4 @@ function BuyPro({ onClose }: { onClose: () => void }) {
     </Modal>
   );
 }
+

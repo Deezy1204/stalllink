@@ -6,6 +6,7 @@
 import {
   addDoc,
   collection,
+  deleteField,
   doc,
   limit,
   onSnapshot,
@@ -20,6 +21,7 @@ import {
 import { getDownloadURL, ref, uploadBytesResumable } from "firebase/storage";
 
 import { db, storage } from "./firebase";
+import { DEFAULT_LIMITS, PLANS, payoutDays, type Plan } from "./plans";
 import {
   cents,
   type Discount,
@@ -28,7 +30,9 @@ import {
   type PaymentOption,
   type PaymentsConfig,
   type PayoutDoc,
+  type PlanLimit,
   type PlanPaymentDoc,
+  type RewardsConfig,
   type ShopDoc,
   type ShopPromo,
   type WalletDoc,
@@ -36,14 +40,71 @@ import {
 
 export const PRO_DAYS = 30;
 export const MIN_PAYOUT = 1;
-export const DEFAULT_CONFIG: PaymentsConfig = { options: [], onlineEnabled: false, proMonthly: 20, serviceFeePercent: 5 };
+export const DEFAULT_REWARDS: RewardsConfig = { enabled: false, basis: "order", tiers: [], capPer30Days: 0, label: "Localink bulk discount" };
+export const DEFAULT_CONFIG: PaymentsConfig = {
+  options: [],
+  onlineEnabled: false,
+  proMonthly: 20,
+  standardMonthly: 10,
+  maxMonthly: 40,
+  serviceFeePercent: 5,
+  standardFeePercent: 2.5,
+  rewards: DEFAULT_REWARDS,
+  limits: DEFAULT_LIMITS,
+};
 
-/** Same rules as paymentsConfigFromMap in the app. */
+/** Same as limitsFromMap in the app: null is no limit; a missing or invalid value keeps the default. */
+function toLimits(v: unknown): PaymentsConfig["limits"] {
+  const out = { ...DEFAULT_LIMITS };
+  if (!v || typeof v !== "object") return out;
+  const read = (e: DocumentData, key: keyof PlanLimit, fallback: number | null) => {
+    if (!(key in e)) return fallback;
+    const x = e[key];
+    if (x === null) return null;
+    return typeof x === "number" && x >= 0 ? Math.trunc(x) : fallback;
+  };
+  for (const p of PLANS) {
+    const e = (v as DocumentData)[p];
+    if (!e || typeof e !== "object") continue;
+    out[p] = { products: read(e, "products", DEFAULT_LIMITS[p].products), branches: read(e, "branches", DEFAULT_LIMITS[p].branches) };
+  }
+  return out;
+}
+
+const clamp = (v: number, lo: number, hi: number) => Math.min(Math.max(v, lo), hi);
+
+function toRewards(v: unknown): RewardsConfig {
+  if (!v || typeof v !== "object") return DEFAULT_REWARDS;
+  const r = v as DocumentData;
+  const n = (x: unknown) => (typeof x === "number" && Number.isFinite(x) ? x : 0);
+  return {
+    enabled: r.enabled === true,
+    basis: r.basis === "month" ? "month" : "order",
+    tiers: ((r.tiers as DocumentData[] | undefined) ?? [])
+      .map((t) => ({ minSpend: n(t?.minSpend), amount: clamp(n(t?.amount), 0, 100000), percent: clamp(n(t?.percent), 0, 50) }))
+      .filter((t) => t.minSpend > 0 && (t.amount > 0 || t.percent > 0))
+      .sort((a, b) => a.minSpend - b.minSpend),
+    capPer30Days: clamp(n(r.capPer30Days), 0, 100000),
+    label: (typeof r.label === "string" && r.label.trim()) || "Localink bulk discount",
+  };
+}
+
+/** Same rules as paymentsConfigFromMap in the app and paymentsConfig in the functions. */
 export function toConfig(d?: DocumentData): PaymentsConfig {
   if (!d) return DEFAULT_CONFIG;
-  const pro = typeof d.proMonthly === "number" && d.proMonthly > 0 ? d.proMonthly : 20;
-  const fee = typeof d.serviceFeePercent === "number" ? Math.min(Math.max(d.serviceFeePercent, 0), 50) : 5;
-  return { options: (d.options as PaymentOption[] | undefined) ?? [], onlineEnabled: d.onlineEnabled === true, proMonthly: pro, serviceFeePercent: fee };
+  const price = (v: unknown, fallback: number) => (typeof v === "number" && v > 0 ? v : fallback);
+  const fee = (v: unknown, fallback: number) => (typeof v === "number" ? clamp(v, 0, 50) : fallback);
+  return {
+    options: (d.options as PaymentOption[] | undefined) ?? [],
+    onlineEnabled: d.onlineEnabled === true,
+    proMonthly: price(d.proMonthly, 20),
+    standardMonthly: price(d.standardMonthly, 10),
+    maxMonthly: price(d.maxMonthly, 40),
+    serviceFeePercent: fee(d.serviceFeePercent, 5),
+    standardFeePercent: fee(d.standardFeePercent, 2.5),
+    rewards: toRewards(d.rewards),
+    limits: toLimits(d.limits),
+  };
 }
 
 export const watchPaymentsConfig = (on: (c: PaymentsConfig) => void, onError?: (e: Error) => void): Unsubscribe =>
@@ -61,6 +122,7 @@ export const toWallet = (shopId: string, d?: DocumentData): WalletDoc => ({
   autoPayout: d?.autoPayout !== false,
   autoRenew: d?.autoRenew !== false,
   lastPayoutAt: d?.lastPayoutAt,
+  localinkDiscounts: d?.localinkDiscounts ?? 0,
 });
 
 export const watchWallet = (shopId: string, on: (w: WalletDoc) => void, onError?: (e: Error) => void): Unsubscribe =>
@@ -94,12 +156,14 @@ export const applyDiscount = (price: number, d: Discount) => cents((price * (100
 
 export const promoHeadline = (p: ShopPromo) => `${p.percent}% off ${p.minSpend ? `orders over $${Number.isInteger(p.minSpend) ? p.minSpend : p.minSpend.toFixed(2)}` : "everything"}`;
 
-/** When the shop's next payout is due: daily on Pro, Mondays on Basic (06:00 Zimbabwe time). */
-export function nextPayoutAt(pro: boolean, from = Date.now()): Date {
+/** When the shop's next payout is due on its plan's schedule (06:00 Zimbabwe time). */
+export function nextPayoutAt(plan: Plan, from = Date.now()): Date {
   const zw = new Date(from + 2 * 3600e3); // UTC+2, read with getUTC*
   let day = Date.UTC(zw.getUTCFullYear(), zw.getUTCMonth(), zw.getUTCDate(), 6);
   if (day <= zw.getTime()) day += 864e5;
-  while (!pro && new Date(day).getUTCDay() !== 1) day += 864e5;
+  const days = payoutDays(plan);
+  // getUTCDay: 0 = Sunday; ours: 1 = Monday … 7 = Sunday.
+  while (days.length && !days.includes(new Date(day).getUTCDay() || 7)) day += 864e5;
   return new Date(day - 2 * 3600e3);
 }
 
@@ -127,11 +191,14 @@ async function walletRequest(data: Record<string, unknown>): Promise<string | nu
   });
 }
 
-export const renewWithCredits = (uid: string, shopId: string, months: number) => walletRequest({ uid, type: "renewPlan", shopId, months });
+export const renewWithCredits = (uid: string, shopId: string, plan: Plan, months: number) => walletRequest({ uid, type: "renewPlan", shopId, plan, months });
 
-/** Starts an online payment for Pro and returns the payment page (or why it could not start). */
-export async function startOnlinePlanPayment(uid: string, shopId: string, months: number): Promise<{ url?: string; error?: string }> {
-  const r = await addDoc(collection(db(), "onlinePayments"), { uid, kind: "plan", shopId, months, method: "web", status: "new", createdAt: Date.now() });
+/** Starts the shop's free trial of [plan] (7 days or 10 orders). Null when done, else the reason. */
+export const startTrial = (uid: string, shopId: string, plan: Plan) => walletRequest({ uid, type: "startTrial", shopId, plan });
+
+/** Starts an online payment for a plan and returns the payment page (or why it could not start). */
+export async function startOnlinePlanPayment(uid: string, shopId: string, plan: Plan, months: number): Promise<{ url?: string; error?: string }> {
+  const r = await addDoc(collection(db(), "onlinePayments"), { uid, kind: "plan", shopId, plan, months, method: "web", status: "new", createdAt: Date.now() });
   return new Promise((resolve) => {
     const timer = setTimeout(() => {
       stop();
@@ -147,8 +214,8 @@ export async function startOnlinePlanPayment(uid: string, shopId: string, months
   });
 }
 
-/** Proof of paying Localink for Pro by transfer; an admin approves it. */
-export async function submitPlanPayment(uid: string, shop: ShopDoc, months: number, amount: number, payment: PaymentOption, file: File, reference: string, payerName: string) {
+/** Proof of paying Localink for a plan by transfer; an admin approves it. */
+export async function submitPlanPayment(uid: string, shop: ShopDoc, plan: Plan, months: number, amount: number, payment: PaymentOption, file: File, reference: string, payerName: string) {
   if (file.size >= 8 * 1024 * 1024) throw new Error("That file is too large (8 MB at most).");
   const target = doc(collection(db(), "planPayments"));
   const ext = file.type === "application/pdf" ? "pdf" : file.type === "image/png" ? "png" : "jpg";
@@ -158,6 +225,7 @@ export async function submitPlanPayment(uid: string, shop: ShopDoc, months: numb
   await setDoc(target, {
     shopId: shop.id,
     ownerId: uid,
+    plan,
     months,
     amount,
     payment,
@@ -218,8 +286,57 @@ export const savePaymentsConfig = (c: PaymentsConfig) => setDoc(doc(db(), "confi
 export const savePaynowCredentials = (integrationId: string, integrationKey: string) =>
   setDoc(doc(db(), "private", "paynow"), { integrationId: integrationId.trim(), integrationKey: integrationKey.trim(), updatedAt: Date.now() });
 
-/** Gives a shop Pro for [days] (e.g. a free month), added to any Pro it has left. */
-export const grantPro = (shop: ShopDoc, days: number) =>
-  updateDoc(doc(db(), "shops", shop.id), { proUntil: Math.max(Date.now(), shop.proUntil ?? 0) + days * 864e5 });
+/** Write-only: the Didit API key and webhook secret (and workflow ID) for the identity checks. Empty fields are left as they are. */
+export async function saveDiditSettings(s: { apiKey?: string; workflowId?: string; webhookSecret?: string }) {
+  const fields = Object.fromEntries(Object.entries(s).map(([k, v]) => [k, (v ?? "").trim()]).filter(([, v]) => v));
+  if (!Object.keys(fields).length) throw new Error("Enter at least one of the Didit settings.");
+  await setDoc(doc(db(), "private", "didit"), { ...fields, updatedAt: Date.now() }, { merge: true });
+  // Public, so the console can say whether identity checks are set up (never the values).
+  await setDoc(
+    doc(db(), "config", "kyc"),
+    { ...(fields.apiKey ? { apiKeySet: true } : {}), ...(fields.workflowId ? { workflowSet: true } : {}), ...(fields.webhookSecret ? { webhookSet: true } : {}), updatedAt: Date.now() },
+    { merge: true },
+  );
+}
 
-export const endPro = (shop: ShopDoc) => updateDoc(doc(db(), "shops", shop.id), { proUntil: Date.now() });
+export const watchKycConfig = (on: (c: { apiKeySet?: boolean; workflowSet?: boolean; webhookSet?: boolean; updatedAt?: number }) => void): Unsubscribe =>
+  onSnapshot(doc(db(), "config", "kyc"), (s) => on(s.data() ?? {}), () => on({}));
+
+/**
+ * Gives a shop [days] of [plan] (e.g. a free month), on top of any time it
+ * has left on that plan. Other paid time is replaced. Admins only.
+ */
+export const grantPlan = (shop: ShopDoc, plan: Plan, days: number) => {
+  const now = Date.now();
+  const sameLeft = shop.plan === plan && (shop.planUntil ?? 0) > now ? shop.planUntil! : plan === "pro" && !shop.plan && (shop.proUntil ?? 0) > now ? shop.proUntil! : now;
+  return updateDoc(doc(db(), "shops", shop.id), { plan, planUntil: sameLeft + days * 864e5, proUntil: deleteField() });
+};
+
+/** Ends the shop's paid plan now (it goes back to Basic; nothing it set up is deleted). */
+export const endPlan = (shop: ShopDoc) => updateDoc(doc(db(), "shops", shop.id), { planUntil: Date.now(), proUntil: deleteField() });
+
+// ---- identity checks (Didit, run by the Cloud Functions) ---------------------------------------
+
+/** Files a `kycRequests` doc and waits for the functions' answer. */
+async function kycRequest(uid: string, action: "start" | "check"): Promise<{ url?: string; error?: string }> {
+  const r = await addDoc(collection(db(), "kycRequests"), { uid, action, status: "pending", source: "web", createdAt: Date.now() });
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => {
+      stop();
+      resolve({ error: "Localink did not answer. Check your connection and try again." });
+    }, 40_000);
+    const stop = onSnapshot(r, (s) => {
+      const d = s.data();
+      if (!d || d.status === "pending") return;
+      clearTimeout(timer);
+      stop();
+      resolve(d.status === "done" ? { url: d.url } : { error: String(d.error ?? "Could not start the identity check.") });
+    });
+  });
+}
+
+/** Starts (or continues) the identity check and returns Didit's page. */
+export const startKyc = (uid: string) => kycRequest(uid, "start");
+
+/** Asks Localink to fetch the latest answer from Didit. */
+export const recheckKyc = (uid: string) => kycRequest(uid, "check");

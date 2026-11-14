@@ -7,7 +7,10 @@ import { useAuth } from "@/components/AuthProvider";
 import { Badge, Button, Card, Empty, Input, Modal, PageHeader, Tabs, useConfirm, useToast } from "@/components/ui";
 import { relativeDay } from "@/lib/catalog";
 import { confirmLocalinkPayment, decidePlanPayment, rejectLocalinkProof } from "@/lib/money";
+import { isPaidPlan, PLAN_LABEL } from "@/lib/plans";
 import { orderShare, orderTotal, paymentTitle, usd, type OrderDoc, type PlanPaymentDoc } from "@/lib/types";
+
+const planOfPayment = (p: PlanPaymentDoc) => PLAN_LABEL[isPaidPlan(p.plan) ? p.plan : "pro"];
 
 type Tab = "orders" | "pro" | "waiting";
 
@@ -58,7 +61,7 @@ export default function PaymentsPage() {
   async function approvePro(p: PlanPaymentDoc) {
     const ok = await confirm({
       title: `Approve ${usd(p.amount)}?`,
-      message: `Only approve once ${usd(p.amount)} from ${p.payerName || shopName(p.shopId)} (ref ${p.paymentRef || "—"}) is in Localink's account. ${shopName(p.shopId)} gets ${p.months} month${p.months === 1 ? "" : "s"} of Pro.`,
+      message: `Only approve once ${usd(p.amount)} from ${p.payerName || shopName(p.shopId)} (ref ${p.paymentRef || "—"}) is in Localink's account. ${shopName(p.shopId)} gets ${p.months} month${p.months === 1 ? "" : "s"} of ${planOfPayment(p)}.`,
       confirm: "Approve and switch Pro on",
     });
     if (ok) await run(p.id, () => decidePlanPayment(uid, p.id, "approved"), `Pro switched on for ${shopName(p.shopId)}.`);
@@ -69,7 +72,7 @@ export default function PaymentsPage() {
     if (!r) return;
     setRejecting(null);
     if (r.kind === "order") await run(r.o.id, () => rejectLocalinkProof(uid, r.o, reason.trim()), "Proof rejected. The buyer has been asked to send it again.");
-    else await run(r.p.id, () => decidePlanPayment(uid, r.p.id, "rejected", reason.trim()), "Pro payment rejected. The shop has been told.");
+    else await run(r.p.id, () => decidePlanPayment(uid, r.p.id, "rejected", reason.trim()), "Plan payment rejected. The shop has been told.");
     setReason("");
   }
 
@@ -91,7 +94,7 @@ export default function PaymentsPage() {
           onChange={setTab}
           options={[
             { value: "orders", label: "Order payments", count: toCheck.length },
-            { value: "pro", label: "Pro payments", count: pro.length },
+            { value: "pro", label: "Plan payments", count: pro.length },
             { value: "waiting", label: "Not paid yet", count: waiting.length },
           ]}
         />
@@ -116,6 +119,7 @@ export default function PaymentsPage() {
                   <dt className="text-ink-3">Reference</dt><dd className="font-semibold">{o.paymentRef || "—"}</dd>
                   <dt className="text-ink-3">Paid by</dt><dd>{o.payerName || "—"}</dd>
                   {!!o.serviceFee && (<><dt className="text-ink-3">Service fee</dt><dd>{usd(o.serviceFee)} (shop gets {usd(orderShare(o))})</dd></>)}
+                  {!!o.localinkDiscount && (<><dt className="text-ink-3">Localink discount</dt><dd>{usd(o.localinkDiscount)} off, paid by Localink (shop gets {usd(orderShare(o))})</dd></>)}
                 </dl>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {proofButton(o.slipUrl, `#${o.id} · ${usd(orderTotal(o))}`)}
@@ -137,7 +141,7 @@ export default function PaymentsPage() {
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="font-bold">{shopName(p.shopId)}</p>
-                    <p className="text-sm text-ink-3">Pro · {p.months} month{p.months === 1 ? "" : "s"} · {relativeDay(p.createdAt)}</p>
+                    <p className="text-sm text-ink-3">{planOfPayment(p)} · {p.months} month{p.months === 1 ? "" : "s"} · {relativeDay(p.createdAt)}</p>
                   </div>
                   <p className="text-xl font-extrabold text-brand">{usd(p.amount)}</p>
                 </div>

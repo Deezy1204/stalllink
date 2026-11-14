@@ -36,12 +36,12 @@ export function earningsCsv(orders: OrderDoc[]): Blob {
   const rows = orders.map((o) =>
     [
       o.id, dayMonthYear(o.createdAt), o.voucherCode, o.recipient?.name ?? "", o.items.length, o.paidVia ? paidViaLabel[o.paidVia] : paymentTitle(o.payment), viaLocalink(o) ? "Localink" : "Shop", paymentStatusText[paymentStatusOf(o)],
-      orderTotal(o).toFixed(2), (o.serviceFee ?? 0).toFixed(2), orderShare(o).toFixed(2), statusLabel[o.status] ?? o.status,
+      orderTotal(o).toFixed(2), (o.serviceFee ?? 0).toFixed(2), (o.localinkDiscount ?? 0).toFixed(2), orderShare(o).toFixed(2), statusLabel[o.status] ?? o.status,
     ]
       .map(cell)
       .join(","),
   );
-  return new Blob([`Order,Date,Voucher,Recipient,Items,Payment,Paid to,Payment status,Buyer paid (USD),Service fee (USD),Your sales (USD),Status\n${rows.join("\n")}\n`], { type: "text/csv" });
+  return new Blob([`Order,Date,Voucher,Recipient,Items,Payment,Paid to,Payment status,Buyer paid (USD),Service fee (USD),Localink discount (USD),Your sales (USD),Status\n${rows.join("\n")}\n`], { type: "text/csv" });
 }
 
 async function newPdf(format: "a4" | "a5", title: string): Promise<JsPdf> {
@@ -166,6 +166,7 @@ export async function receiptPdf(o: OrderDoc, shop?: ShopDoc): Promise<Blob> {
   if (o.discount) row(o.promoLabel || "Shop offer", `-${usd(o.discount)}`);
   if (o.runnerFee) row("Doorstep runner", usd(o.runnerFee));
   if (o.serviceFee) row("Localink service fee", usd(o.serviceFee));
+  if (o.localinkDiscount) row(o.localinkLabel || "Localink discount", `-${usd(o.localinkDiscount)}`);
   row("Total paid", usd(orderTotal(o)), { bold: true, color: BRAND });
   row("Payment", `${paymentTitle(o.payment)} · ${paymentStatusText[paymentStatusOf(o)]}`);
   return pdf.output("blob");

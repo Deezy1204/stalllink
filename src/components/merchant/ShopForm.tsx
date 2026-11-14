@@ -24,7 +24,8 @@ import {
   ZIM_CITIES,
 } from "@/lib/catalog";
 import { saveShop } from "@/lib/merchant";
-import { isPro, paymentTitle, usd, type Branch, type DayHours, type PaymentOption, type ShopDoc } from "@/lib/types";
+import { branchLimit, feePercentOf, PAYOUT_LABEL, PLAN_LABEL, planOf, takesPayments, TRIAL_DAYS } from "@/lib/plans";
+import { paymentTitle, usd, type Branch, type DayHours, type PaymentOption, type ShopDoc } from "@/lib/types";
 import { MapPicker, PinTile } from "./MapPicker";
 import { useMerchant } from "./MerchantData";
 import { PhotoSlots, usePhotoUpload } from "./Photos";
@@ -139,8 +140,11 @@ export function ShopForm({ shop }: { shop: ShopDoc | null }) {
     !f.week.some((d) => d.open) && "opening hours",
   ].filter(Boolean) as string[];
   const done = 5 - missing.length;
-  // Only Pro shops take payments themselves; Basic shops are paid through Localink.
-  const pro = isPro(shop);
+  // Only Pro and Max shops take payments themselves; others are paid through Localink.
+  const plan = planOf(shop);
+  const pro = takesPayments(plan);
+  const feePercent = feePercentOf(plan, config);
+  const maxBranches = branchLimit(plan, config.limits);
   const rate = Number(f.rate);
   const fee = Number(f.fee);
   const err = {
@@ -343,12 +347,12 @@ export function ShopForm({ shop }: { shop: ShopDoc | null }) {
         >
           {!pro && (
             <Link href={shop ? "/merchant/plan" : "#"} className="block rounded-2xl border border-accent/40 bg-accent-50 p-4 text-sm text-accent-800 hover:bg-accent/15">
-              <b className="block">Take payments yourself with Pro</b>
-              On Basic, a {config.serviceFeePercent}% service fee is added for buyers and you are paid out weekly. Pro ({usd(config.proMonthly)}/month) lets buyers pay your own accounts, with no fee and daily payouts.
+              <b className="block">Take payments yourself with Pro or Max</b>
+              On {PLAN_LABEL[plan]}, {feePercent > 0 ? `a ${feePercent}% service fee is added for buyers` : "there is no service fee"} and you are paid out {PAYOUT_LABEL[plan].toLowerCase()}. Pro ({usd(config.proMonthly)}/month) lets buyers pay your own accounts, with no fee and daily payouts. Try it free for {TRIAL_DAYS} days.
               {shop ? " ›" : " Publish your shop first, then choose a plan."}
             </Link>
           )}
-          {!pro && f.payments.length > 0 && <p className="mb-2 mt-4 text-xs font-semibold text-ink-3">Saved for when you are on Pro (buyers do not see them now):</p>}
+          {!pro && f.payments.length > 0 && <p className="mb-2 mt-4 text-xs font-semibold text-ink-3">Saved for when you are on Pro or Max (buyers do not see them now):</p>}
           <div className={`space-y-2 ${pro ? "" : "opacity-60"}`}>
             {f.payments.map((p) => (
               <div key={p.id} className="flex items-center gap-3 rounded-2xl border border-line p-3">
@@ -365,13 +369,19 @@ export function ShopForm({ shop }: { shop: ShopDoc | null }) {
           {shop && <Link href="/merchant/earnings" className="mt-3 block text-sm font-semibold text-brand hover:underline">Where Localink pays you (payouts) ›</Link>}
         </Section>
 
-        <Section title="Branches" subtitle="Other places customers can collect from (optional).">
+        <Section
+          title="Branches"
+          subtitle={`Other places customers can collect from (optional). ${
+            maxBranches == null ? `${PLAN_LABEL[plan]} shows buyers all of them.` : maxBranches === 0 ? `Buyers see branches from Standard up; they are kept on ${PLAN_LABEL[plan]}.` : `${PLAN_LABEL[plan]} shows buyers ${maxBranches} branch${maxBranches === 1 ? "" : "es"}.`
+          }`}
+        >
           <div className="space-y-2">
-            {f.branches.map((b) => (
+            {f.branches.map((b, bi) => (
               <div key={b.id} className="flex items-center gap-3 rounded-2xl border border-line p-3">
                 <button type="button" className="min-w-0 flex-1 text-left" onClick={() => setBranch(b)}>
                   <span className="block text-sm font-bold">{b.name}</span>
                   <span className="block truncate text-xs text-ink-3">{[b.standNo, b.address].filter(Boolean).join(" • ")}, {b.suburb}{b.lat != null ? " · pinned" : ""}</span>
+                  {maxBranches != null && bi >= maxBranches && <span className="block text-xs font-semibold text-accent-800">Hidden from buyers on {PLAN_LABEL[plan]} (kept)</span>}
                 </button>
                 <button type="button" className="text-sm font-semibold text-brand hover:underline" onClick={() => setBranch(b)}>Edit</button>
                 <button type="button" className="text-sm font-semibold text-red-700 hover:underline" onClick={() => set({ branches: f.branches.filter((x) => x.id !== b.id) })}>Remove</button>

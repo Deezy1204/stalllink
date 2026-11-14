@@ -7,12 +7,37 @@ import { useAuth } from "@/components/AuthProvider";
 import { Badge, Button, Card, Empty, Input, Modal, PageHeader, Tabs, useToast } from "@/components/ui";
 import { paymentSummary, relativeDay } from "@/lib/catalog";
 import { markPayout } from "@/lib/money";
-import { paymentTitle, shortDate, usd, type PayoutDoc } from "@/lib/types";
+import { isPaidPlan, PAYOUT_LABEL, PLAN_LABEL } from "@/lib/plans";
+import { cents, paymentTitle, shortDate, usd, type PayoutDoc } from "@/lib/types";
+
+const planLine = (p: PayoutDoc) => {
+  const plan = isPaidPlan(p.plan) ? p.plan : "basic";
+  return `${PLAN_LABEL[plan]} · ${PAYOUT_LABEL[plan].toLowerCase()}`;
+};
+
+/** What the payout is made of: sales at full price, Localink's discounts on them, and the rest. */
+function Breakdown({ p }: { p: PayoutDoc }) {
+  const b = p.breakdown;
+  if (!b) return null;
+  const other = cents(p.amount - b.sales);
+  return (
+    <dl className="mt-3 grid grid-cols-[1fr_auto] gap-x-4 gap-y-0.5 rounded-xl border border-line p-3 text-sm">
+      <dt className="text-ink-3">Purchased ({b.orders} order{b.orders === 1 ? "" : "s"})</dt><dd>{usd(b.sales)}</dd>
+      <dt className="text-ink-3">Discounted by Localink</dt><dd>{b.localinkDiscount ? `−${usd(b.localinkDiscount)}` : usd(0)}</dd>
+      <dt className="text-ink-3">Buyers paid Localink</dt><dd>{usd(cents(b.sales - b.localinkDiscount))}</dd>
+      {!!b.localinkDiscount && (<><dt className="text-ink-3">Localink pays the discount</dt><dd className="text-mint-800">+{usd(b.localinkDiscount)}</dd></>)}
+      {Math.abs(other) >= 0.01 && (<><dt className="text-ink-3">{other < 0 ? "Spent from earnings" : "Earlier earnings"}</dt><dd>{other < 0 ? "−" : "+"}{usd(Math.abs(other))}</dd></>)}
+      <dt className="border-t border-line pt-1 font-bold">Pay the shop</dt><dd className="border-t border-line pt-1 font-bold">{usd(p.amount)}</dd>
+    </dl>
+  );
+}
 
 /**
- * Payouts the Cloud Functions created on schedule (Pro shops daily, Basic
- * shops on Mondays). Send the money to the account shown, then mark it paid
- * with the transaction reference. A failed payout goes back to the shop's balance.
+ * Payouts the Cloud Functions created on schedule (Pro and Max shops daily,
+ * Standard on Mondays and Thursdays, Basic on Mondays). Each shows the sales
+ * it pays for at full price and what of that Localink paid as discounts.
+ * Send the money to the account shown, then mark it paid with the
+ * transaction reference. A failed payout goes back to the shop's balance.
  */
 export default function PayoutsPage() {
   const { payouts, shops } = useAdminData();
@@ -27,6 +52,8 @@ export default function PayoutsPage() {
   const pending = payouts.filter((p) => p.status === "pending");
   const done = payouts.filter((p) => p.status !== "pending");
   const due = pending.reduce((s, p) => s + p.amount, 0);
+  // What Localink's own discounts cost, in the payouts listed.
+  const discounts = cents(payouts.filter((p) => p.status !== "failed").reduce((s, p) => s + (p.breakdown?.localinkDiscount ?? 0), 0));
 
   async function save() {
     if (!marking) return;
@@ -46,13 +73,16 @@ export default function PayoutsPage() {
 
   return (
     <>
-      <PageHeader title="Payouts" subtitle={pending.length ? `${pending.length} to send · ${usd(due)}` : "Nothing to send right now"} />
+      <PageHeader
+        title="Payouts"
+        subtitle={`${pending.length ? `${pending.length} to send · ${usd(due)}` : "Nothing to send right now"}${discounts ? ` · Localink discounts paid to shops: ${usd(discounts)}` : ""}`}
+      />
       <div className="mb-4">
         <Tabs value={tab} onChange={setTab} options={[{ value: "pending", label: "To send", count: pending.length }, { value: "done", label: "History" }]} />
       </div>
       {tab === "pending" &&
         (pending.length === 0 ? (
-          <Empty title="No payouts to send" message="They are created every morning at 06:00 (Zimbabwe time): daily for Pro shops, on Mondays for Basic shops." />
+          <Empty title="No payouts to send" message="They are created every morning at 06:00 (Zimbabwe time): daily for Pro and Max shops, on Mondays and Thursdays for Standard, on Mondays for Basic." />
         ) : (
           <div className="grid gap-3 md:grid-cols-2">
             {pending.map((p) => (
@@ -60,10 +90,11 @@ export default function PayoutsPage() {
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="font-bold">{shopName(p.shopId)}</p>
-                    <p className="text-sm text-ink-3">{p.plan === "pro" ? "Pro · daily" : "Basic · weekly"} · created {relativeDay(p.createdAt)}</p>
+                    <p className="text-sm text-ink-3">{planLine(p)} · created {relativeDay(p.createdAt)}</p>
                   </div>
                   <p className="text-xl font-extrabold text-brand">{usd(p.amount)}</p>
                 </div>
+                <Breakdown p={p} />
                 <div className="mt-3 rounded-xl bg-surface p-3 text-sm">
                   <p className="font-semibold">{paymentTitle(p.to)}</p>
                   <p className="text-ink-2">{paymentSummary(p.to)}</p>
@@ -86,7 +117,16 @@ export default function PayoutsPage() {
               <div key={p.id} className="flex flex-wrap items-center gap-3 px-4 py-3 text-sm">
                 <span className="min-w-0 flex-1">
                   <b>{shopName(p.shopId)}</b> · {usd(p.amount)} · {shortDate(p.handledAt ?? p.createdAt)}
-                  <span className="block text-xs text-ink-3">{[paymentTitle(p.to), paymentSummary(p.to), p.reference && `ref ${p.reference}`, p.note].filter(Boolean).join(" · ")}</span>
+                  <span className="block text-xs text-ink-3">
+                    {[
+                      p.breakdown && `${p.breakdown.orders} order${p.breakdown.orders === 1 ? "" : "s"}, ${usd(p.breakdown.sales)} purchased`,
+                      p.breakdown?.localinkDiscount && `${usd(p.breakdown.localinkDiscount)} discounted by Localink`,
+                      paymentTitle(p.to),
+                      paymentSummary(p.to),
+                      p.reference && `ref ${p.reference}`,
+                      p.note,
+                    ].filter(Boolean).join(" · ")}
+                  </span>
                 </span>
                 <Badge tone={p.status === "paid" ? "success" : "danger"}>{p.status === "paid" ? "Paid" : "Returned"}</Badge>
               </div>

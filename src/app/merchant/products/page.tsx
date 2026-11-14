@@ -10,11 +10,12 @@ import { Badge, Card, Empty, PageHeader, SearchInput, Spinner, Switch, Tabs, use
 import { fromPrice, productCategoryLabel, productPhotos, variationLabel } from "@/lib/catalog";
 import { applyDiscount } from "@/lib/money";
 import { patchProduct } from "@/lib/merchant";
+import { bulkPrices, listedProducts, PLAN_LABEL, planOf, productLimit } from "@/lib/plans";
 import { usd, type Product, isActive } from "@/lib/types";
 
 /** The active shop's inventory: search, filter, adjust stock and hide/show products. */
 export default function ProductsPage() {
-  const { shop, loaded } = useMerchant();
+  const { shop, loaded, config } = useMerchant();
   const toast = useToast();
   const [q, setQ] = useState("");
   const [category, setCategory] = useState("all");
@@ -28,6 +29,9 @@ export default function ProductsPage() {
 
   const change = (p: Product, patch: (p: Product) => Partial<Product>, fail: string) =>
     patchProduct(shop.id, p.id, patch).catch((e: Error) => toast(`${fail}: ${e.message}`, "error"));
+  // Products over the plan's limit are kept but hidden from buyers.
+  const plan = planOf(shop);
+  const hiddenIds = new Set(listedProducts(shop, config.limits).hidden.map((p) => p.id));
 
   return (
     <>
@@ -40,6 +44,11 @@ export default function ProductsPage() {
           </Link>
         }
       />
+      {hiddenIds.size > 0 && (
+        <Link href="/merchant/plan" className="mb-4 block rounded-2xl bg-accent-50 px-4 py-3 text-sm text-accent-800 hover:bg-accent/15">
+          {PLAN_LABEL[plan]} shows buyers {productLimit(plan, config.limits)} products. {hiddenIds.size} marked “Hidden on {PLAN_LABEL[plan]}” are kept: hide others to swap them in, or upgrade to show them all. ›
+        </Link>
+      )}
       <div className="mb-4 grid gap-3 md:grid-cols-[1fr_auto] md:items-center">
         <SearchInput placeholder="Search your products…" value={q} onChange={(e) => setQ(e.target.value)} />
         <Tabs value={category} onChange={setCategory} options={[{ value: "all", label: "All", count: all.length }, ...categories.map((c) => ({ value: c, label: productCategoryLabel(c) }))]} />
@@ -58,6 +67,7 @@ export default function ProductsPage() {
             const sizes = p.variations ?? [];
             const low = p.stock <= 5;
             const available = p.available !== false;
+            const overLimit = hiddenIds.has(p.id);
             return (
               <Card key={p.id} index={Math.min(i, 12)} className={`p-4 ${available ? "" : "opacity-75"}`}>
                 <div className="flex gap-3">
@@ -80,7 +90,8 @@ export default function ProductsPage() {
                       <span className={`text-lg font-extrabold ${isActive(p.discount) ? "text-red-700" : "text-brand"}`}>{sizes.length > 1 ? "From " : ""}{usd(isActive(p.discount) ? applyDiscount(fromPrice(p), p.discount!) : fromPrice(p))}</span>
                       {isActive(p.discount) && <><s className="text-sm text-ink-3">{usd(fromPrice(p))}</s> <span className="rounded-md bg-red-700 px-1.5 text-xs font-bold text-white">-{p.discount!.percent}%</span></>}
                       {sizes.length > 1 && <Badge>{sizes.length} sizes</Badge>}
-                      {sizes.some((v) => v.bulk?.length) && <Badge tone="brand">Bulk</Badge>}
+                      {sizes.some((v) => v.bulk?.length) && <Badge tone={bulkPrices(plan) ? "brand" : "warning"}>{bulkPrices(plan) ? "Bulk" : "Bulk · shows on Max"}</Badge>}
+                      {overLimit && <Badge tone="warning">Hidden on {PLAN_LABEL[plan]}</Badge>}
                     </div>
                   </div>
                 </div>

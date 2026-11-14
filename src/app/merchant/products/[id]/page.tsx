@@ -11,6 +11,7 @@ import { PhotoSlots } from "@/components/merchant/Photos";
 import { Button, Card, Empty, Input, Pill, Select, Spinner, Switch, Textarea, useConfirm, useToast } from "@/components/ui";
 import { amount, MAX_PRODUCT_PHOTOS, MEASURE_UNITS, PRODUCT_CATEGORIES, fmtNumber, productPhotos, unitMenuLabel, variationLabel, zar } from "@/lib/catalog";
 import { deleteProduct, saveProduct } from "@/lib/merchant";
+import { bulkPrices, planOf } from "@/lib/plans";
 import { isActive, shortDate, usd, type Product, type Variation } from "@/lib/types";
 
 interface BulkForm {
@@ -344,6 +345,9 @@ export default function ProductForm() {
               </div>
 
               {s.bulk.length > 0 && <p className="mb-1 mt-4 text-sm font-bold">Bulk prices</p>}
+              {s.bulk.length > 0 && shop && !bulkPrices(planOf(shop)) && (
+                <p className="mb-2 text-xs text-accent-800">Buyers see bulk prices on Max. They are saved and show as soon as {shop.name} is on Max.</p>
+              )}
               {s.bulk.map((b) => {
                 const count = Number(b.count);
                 const price = num(b.price);

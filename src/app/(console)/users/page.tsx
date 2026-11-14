@@ -6,7 +6,7 @@ import { useAdminData } from "@/components/AdminData";
 import { useAuth } from "@/components/AuthProvider";
 import { Badge, Button, Card, Empty, PageHeader, SearchInput, Tabs, useConfirm, useToast } from "@/components/ui";
 import { addAdmin, setUserSuspended } from "@/lib/data";
-import { shortDate, type UserDoc } from "@/lib/types";
+import { kycLabel, shortDate, type UserDoc } from "@/lib/types";
 
 type Filter = "all" | "merchants" | "admins" | "suspended";
 
@@ -95,6 +95,9 @@ export default function UsersPage() {
                           <div className="mt-0.5 flex gap-1">
                             {adminIds.has(u.id) && <Badge tone="dark">Admin</Badge>}
                             {u.suspended && <Badge tone="danger">Suspended</Badge>}
+                            {(u.role === "merchant" || u.kyc?.status !== "none") && (
+                              <Badge tone={u.kyc?.status === "approved" ? "success" : u.kyc?.status === "declined" ? "danger" : "neutral"}>{kycLabel[u.kyc?.status ?? "none"]}</Badge>
+                            )}
                           </div>
                         </div>
                       </div>

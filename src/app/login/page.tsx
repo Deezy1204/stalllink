@@ -34,6 +34,11 @@ function message(e: unknown): string {
       return "No internet connection.";
     case "auth/operation-not-allowed":
       return "This sign-in method is not enabled in the Firebase console.";
+    case "auth/unauthorized-domain":
+      // Google sign-in only works on addresses listed in Firebase.
+      return `Google sign-in is not allowed on ${typeof window === "undefined" ? "this address" : window.location.hostname} yet. A Localink admin must add it in the Firebase console (Authentication → Settings → Authorized domains). Meanwhile, sign in with your email and password.`;
+    case "auth/popup-blocked":
+      return "The browser blocked the Google sign-in window. Allow pop-ups for this site and try again.";
     default:
       return (e as Error)?.message ?? "Something went wrong.";
   }
@@ -54,11 +59,13 @@ function Login() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
+  // A new merchant account goes on to the identity check first.
+  const [signedUp, setSignedUp] = useState(false);
 
   // Admins land in the admin console, everyone else in the merchant console.
   useEffect(() => {
-    if (!loading && user && !busy) router.replace(next ?? (isAdmin ? "/" : "/merchant"));
-  }, [loading, user, isAdmin, busy, next, router]);
+    if (!loading && user && !busy) router.replace(signedUp ? "/merchant/verify" : (next ?? (isAdmin ? "/" : "/merchant")));
+  }, [loading, user, isAdmin, busy, next, router, signedUp]);
 
   async function run(fn: () => Promise<unknown>) {
     setBusy(true);
@@ -83,6 +90,7 @@ function Login() {
       const cred = await createUserWithEmailAndPassword(auth(), email.trim(), password);
       await updateProfile(cred.user, { displayName: name.trim() });
       await createProfile(cred.user, { name: name.trim(), phone: phone.trim() });
+      setSignedUp(true);
     });
   };
 
