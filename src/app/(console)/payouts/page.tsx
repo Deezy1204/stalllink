@@ -15,7 +15,7 @@ const planLine = (p: PayoutDoc) => {
   return `${PLAN_LABEL[plan]} · ${PAYOUT_LABEL[plan].toLowerCase()}`;
 };
 
-/** What the payout is made of: sales at full price, Localink's discounts on them, and the rest. */
+/** What the payout is made of: sales at full price, LocalinkGo's discounts on them, and the rest. */
 function Breakdown({ p }: { p: PayoutDoc }) {
   const b = p.breakdown;
   if (!b) return null;
@@ -23,9 +23,9 @@ function Breakdown({ p }: { p: PayoutDoc }) {
   return (
     <dl className="mt-3 grid grid-cols-[1fr_auto] gap-x-4 gap-y-0.5 rounded-xl border border-line p-3 text-sm">
       <dt className="text-ink-3">Purchased ({b.orders} order{b.orders === 1 ? "" : "s"})</dt><dd>{usd(b.sales)}</dd>
-      <dt className="text-ink-3">Discounted by Localink</dt><dd>{b.localinkDiscount ? `−${usd(b.localinkDiscount)}` : usd(0)}</dd>
-      <dt className="text-ink-3">Buyers paid Localink</dt><dd>{usd(cents(b.sales - b.localinkDiscount))}</dd>
-      {!!b.localinkDiscount && (<><dt className="text-ink-3">Localink pays the discount</dt><dd className="text-mint-800">+{usd(b.localinkDiscount)}</dd></>)}
+      <dt className="text-ink-3">Discounted by LocalinkGo</dt><dd>{b.localinkDiscount ? `−${usd(b.localinkDiscount)}` : usd(0)}</dd>
+      <dt className="text-ink-3">Buyers paid LocalinkGo</dt><dd>{usd(cents(b.sales - b.localinkDiscount))}</dd>
+      {!!b.localinkDiscount && (<><dt className="text-ink-3">LocalinkGo pays the discount</dt><dd className="text-mint-800">+{usd(b.localinkDiscount)}</dd></>)}
       {Math.abs(other) >= 0.01 && (<><dt className="text-ink-3">{other < 0 ? "Spent from earnings" : "Earlier earnings"}</dt><dd>{other < 0 ? "−" : "+"}{usd(Math.abs(other))}</dd></>)}
       <dt className="border-t border-line pt-1 font-bold">Pay the shop</dt><dd className="border-t border-line pt-1 font-bold">{usd(p.amount)}</dd>
     </dl>
@@ -35,7 +35,7 @@ function Breakdown({ p }: { p: PayoutDoc }) {
 /**
  * Payouts the Cloud Functions created on schedule (Pro and Max shops daily,
  * Standard on Mondays and Thursdays, Basic on Mondays). Each shows the sales
- * it pays for at full price and what of that Localink paid as discounts.
+ * it pays for at full price and what of that LocalinkGo paid as discounts.
  * Send the money to the account shown, then mark it paid with the
  * transaction reference. A failed payout goes back to the shop's balance.
  */
@@ -52,7 +52,7 @@ export default function PayoutsPage() {
   const pending = payouts.filter((p) => p.status === "pending");
   const done = payouts.filter((p) => p.status !== "pending");
   const due = pending.reduce((s, p) => s + p.amount, 0);
-  // What Localink's own discounts cost, in the payouts listed.
+  // What LocalinkGo's own discounts cost, in the payouts listed.
   const discounts = cents(payouts.filter((p) => p.status !== "failed").reduce((s, p) => s + (p.breakdown?.localinkDiscount ?? 0), 0));
 
   async function save() {
@@ -75,7 +75,7 @@ export default function PayoutsPage() {
     <>
       <PageHeader
         title="Payouts"
-        subtitle={`${pending.length ? `${pending.length} to send · ${usd(due)}` : "Nothing to send right now"}${discounts ? ` · Localink discounts paid to shops: ${usd(discounts)}` : ""}`}
+        subtitle={`${pending.length ? `${pending.length} to send · ${usd(due)}` : "Nothing to send right now"}${discounts ? ` · LocalinkGo discounts paid to shops: ${usd(discounts)}` : ""}`}
       />
       <div className="mb-4">
         <Tabs value={tab} onChange={setTab} options={[{ value: "pending", label: "To send", count: pending.length }, { value: "done", label: "History" }]} />
@@ -120,7 +120,7 @@ export default function PayoutsPage() {
                   <span className="block text-xs text-ink-3">
                     {[
                       p.breakdown && `${p.breakdown.orders} order${p.breakdown.orders === 1 ? "" : "s"}, ${usd(p.breakdown.sales)} purchased`,
-                      p.breakdown?.localinkDiscount && `${usd(p.breakdown.localinkDiscount)} discounted by Localink`,
+                      p.breakdown?.localinkDiscount && `${usd(p.breakdown.localinkDiscount)} discounted by LocalinkGo`,
                       paymentTitle(p.to),
                       paymentSummary(p.to),
                       p.reference && `ref ${p.reference}`,

@@ -1,5 +1,5 @@
 // The sales report (PDF / CSV) and order receipt a merchant downloads, laid
-// out like the app's (Localink/lib/core/utils/documents.dart).
+// out like the app's (LocalinkGo/lib/core/utils/documents.dart).
 
 import type { jsPDF as JsPdf } from "jspdf";
 
@@ -35,34 +35,87 @@ const cell = (v: string | number) => {
 export function earningsCsv(orders: OrderDoc[]): Blob {
   const rows = orders.map((o) =>
     [
-      o.id, dayMonthYear(o.createdAt), o.voucherCode, o.recipient?.name ?? "", o.items.length, o.paidVia ? paidViaLabel[o.paidVia] : paymentTitle(o.payment), viaLocalink(o) ? "Localink" : "Shop", paymentStatusText[paymentStatusOf(o)],
+      o.id, dayMonthYear(o.createdAt), o.voucherCode, o.recipient?.name ?? "", o.items.length, o.paidVia ? paidViaLabel[o.paidVia] : paymentTitle(o.payment), viaLocalink(o) ? "LocalinkGo" : "Shop", paymentStatusText[paymentStatusOf(o)],
       orderTotal(o).toFixed(2), (o.serviceFee ?? 0).toFixed(2), (o.localinkDiscount ?? 0).toFixed(2), orderShare(o).toFixed(2), statusLabel[o.status] ?? o.status,
     ]
       .map(cell)
       .join(","),
   );
-  return new Blob([`Order,Date,Voucher,Recipient,Items,Payment,Paid to,Payment status,Buyer paid (USD),Service fee (USD),Localink discount (USD),Your sales (USD),Status\n${rows.join("\n")}\n`], { type: "text/csv" });
+  return new Blob([`Order,Date,Voucher,Recipient,Items,Payment,Paid to,Payment status,Buyer paid (USD),Service fee (USD),LocalinkGo discount (USD),Your sales (USD),Status\n${rows.join("\n")}\n`], { type: "text/csv" });
+}
+
+/** The LocalinkGo pin (square image). */
+const LOGO_URL = "/brand/localink-mark.png";
+let logoData: Promise<string | null> | null = null;
+
+const INK: [number, number, number] = [0x13, 0x26, 0x1f];
+const TEAL: [number, number, number] = [0x0e, 0x8a, 0x73];
+const ORANGE: [number, number, number] = [0xe6, 0x9a, 0x27];
+
+/**
+ * The logo at (x, y) with the pin [h] high: the pin, "localinkGo" ("local"
+ * dark, "ink" teal, "Go" orange) and "LOCAL MARKETPLACE", like the app's
+ * LogoLockup. Returns its width.
+ */
+function drawLockup(pdf: JsPdf, mark: string | null, x: number, y: number, h: number): number {
+  let left = x;
+  if (mark) {
+    pdf.addImage(mark, "PNG", x, y, h, h);
+    left = x + h * 0.95;
+  }
+  const size = h * 0.42;
+  const base = y + h / 2 + size * 0.12;
+  pdf.setFont("helvetica", "bold").setFontSize(size);
+  let cx = left;
+  for (const [part, color] of [["local", INK], ["ink", TEAL], ["Go", ORANGE]] as const) {
+    pdf.setTextColor(...color).text(part, cx, base);
+    cx += pdf.getTextWidth(part);
+  }
+  pdf.setFontSize(size * 0.32).setTextColor(...INK);
+  pdf.text("LOCAL MARKETPLACE", left + 1, base + size * 0.5, { charSpace: size * 0.06 });
+  return cx - x;
+}
+
+/** The logo as a data URL for jsPDF; null if it cannot be loaded (the header then shows the name in text). */
+function logo(): Promise<string | null> {
+  logoData ??= fetch(LOGO_URL)
+    .then((r) => (r.ok ? r.blob() : Promise.reject(new Error(`HTTP ${r.status}`))))
+    .then(
+      (blob) =>
+        new Promise<string | null>((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : null);
+          reader.onerror = () => resolve(null);
+          reader.readAsDataURL(blob);
+        }),
+    )
+    .catch(() => {
+      logoData = null; // try again next time
+      return null;
+    });
+  return logoData;
 }
 
 async function newPdf(format: "a4" | "a5", title: string): Promise<JsPdf> {
   const { jsPDF } = await import("jspdf");
   const pdf = new jsPDF({ unit: "pt", format });
-  pdf.setProperties({ title, author: "Localink" });
+  pdf.setProperties({ title, author: "LocalinkGo" });
   return pdf;
 }
 
 export async function earningsPdf(title: string, orders: OrderDoc[]): Promise<Blob> {
-  const pdf = await newPdf("a4", "Localink sales report");
+  const pdf = await newPdf("a4", "LocalinkGo sales report");
   const W = pdf.internal.pageSize.getWidth();
   const H = pdf.internal.pageSize.getHeight();
   const M = 32;
   let y = M + 14;
 
-  pdf.setFont("helvetica", "bold").setFontSize(20).setTextColor(...BRAND).text("Localink sales report", M, y);
-  y += 18;
-  pdf.setFont("helvetica", "normal").setFontSize(11).setTextColor(...GREY).text(safe(`${title} - ${dayMonthYear(Date.now())}`), M, y);
-  y += 26;
-  // The shop's share of each sale (without Localink's service fee).
+  const mark = await logo();
+  drawLockup(pdf, mark, M, M - 6, 46);
+  pdf.setFont("helvetica", "bold").setFontSize(16).setTextColor(...BRAND).text("Sales report", W - M, M + 12, { align: "right" });
+  pdf.setFont("helvetica", "normal").setFontSize(11).setTextColor(...GREY).text(safe(`${title} - ${dayMonthYear(Date.now())}`), W - M, M + 28, { align: "right" });
+  y = M + 66;
+  // The shop's share of each sale (without LocalinkGo's service fee).
   const collected = orders.filter((o) => o.status === "collected").reduce((s, o) => s + orderShare(o), 0);
   const pending = orders.filter((o) => o.status === "readyForPickup").reduce((s, o) => s + orderShare(o), 0);
   pdf.setFont("helvetica", "bold").setTextColor(...BLACK).text(`Total: ${usd(collected + pending)}    Collected: ${usd(collected)}    Awaiting pickup: ${usd(pending)}`, M, y);
@@ -96,7 +149,7 @@ export async function earningsPdf(title: string, orders: OrderDoc[]): Promise<Bl
       pdf.setFont("helvetica", "normal").setTextColor(...BLACK);
     }
     if (i % 2 === 1) pdf.setFillColor(0xee, 0xf4, 0xf1).rect(M, y, W - 2 * M, 18, "F");
-    const values = [o.id, dayMonthYear(o.createdAt), o.recipient?.name ?? "", viaLocalink(o) ? "Through Localink" : paymentTitle(o.payment), usd(orderShare(o)), statusLabel[o.status] ?? o.status];
+    const values = [o.id, dayMonthYear(o.createdAt), o.recipient?.name ?? "", viaLocalink(o) ? "Through LocalinkGo" : paymentTitle(o.payment), usd(orderShare(o)), statusLabel[o.status] ?? o.status];
     let x = M + 6;
     values.forEach((v, j) => {
       const text = pdf.splitTextToSize(safe(v), cols[j].w - 8)[0] ?? "";
@@ -111,7 +164,7 @@ export async function earningsPdf(title: string, orders: OrderDoc[]): Promise<Bl
 
 /** A plain receipt of the order, as the shop sees it (no QR or PIN). */
 export async function receiptPdf(o: OrderDoc, shop?: ShopDoc): Promise<Blob> {
-  const pdf = await newPdf("a5", `Localink receipt ${o.id}`);
+  const pdf = await newPdf("a5", `LocalinkGo receipt ${o.id}`);
   const W = pdf.internal.pageSize.getWidth();
   const H = pdf.internal.pageSize.getHeight();
   const M = 28;
@@ -135,9 +188,12 @@ export async function receiptPdf(o: OrderDoc, shop?: ShopDoc): Promise<Blob> {
     y += 15;
   };
 
-  pdf.setFont("helvetica", "bold").setFontSize(20).setTextColor(...BRAND).text("Localink", M, y);
-  pdf.setFontSize(12).setTextColor(...GREY).text("RECEIPT", W - M, y, { align: "right" });
-  y += 12;
+  const mark = await logo();
+  const h = 46;
+  drawLockup(pdf, mark, M, M - 6, h);
+  pdf.setFont("helvetica", "bold").setFontSize(12).setTextColor(...GREY).text("RECEIPT", W - M, M + h - 22, { align: "right" });
+  pdf.setFont("helvetica", "normal").setFontSize(10).text(`#${o.id}`, W - M, M + h - 8, { align: "right" });
+  y = M + h + 4;
   line();
   row("Order", `#${o.id}`);
   row("Date", dayMonthYear(o.createdAt));
@@ -165,8 +221,8 @@ export async function receiptPdf(o: OrderDoc, shop?: ShopDoc): Promise<Blob> {
   row("Subtotal", usd(subtotal));
   if (o.discount) row(o.promoLabel || "Shop offer", `-${usd(o.discount)}`);
   if (o.runnerFee) row("Doorstep runner", usd(o.runnerFee));
-  if (o.serviceFee) row("Localink service fee", usd(o.serviceFee));
-  if (o.localinkDiscount) row(o.localinkLabel || "Localink discount", `-${usd(o.localinkDiscount)}`);
+  if (o.serviceFee) row("LocalinkGo service fee", usd(o.serviceFee));
+  if (o.localinkDiscount) row(o.localinkLabel || "LocalinkGo discount", `-${usd(o.localinkDiscount)}`);
   row("Total paid", usd(orderTotal(o)), { bold: true, color: BRAND });
   row("Payment", `${paymentTitle(o.payment)} · ${paymentStatusText[paymentStatusOf(o)]}`);
   return pdf.output("blob");

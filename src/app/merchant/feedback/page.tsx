@@ -10,7 +10,7 @@ import type { ReviewDoc } from "@/lib/types";
 
 type Filter = "all" | "merchant" | "customer";
 
-/** Shop owners rate and review Localink itself; everyone's reviews of it are public. */
+/** Shop owners rate and review LocalinkGo itself; everyone's reviews of it are public. */
 export default function RateLocalinkPage() {
   const { user, profile, appReview } = useMerchant();
   const confirm = useConfirm();
@@ -30,14 +30,14 @@ export default function RateLocalinkPage() {
   }
 
   async function remove() {
-    if (!(await confirm({ title: "Delete your review?", message: "It is removed from Localink's reviews. You can write a new one any time.", confirm: "Delete", danger: true }))) return;
+    if (!(await confirm({ title: "Delete your review?", message: "It is removed from LocalinkGo's reviews. You can write a new one any time.", confirm: "Delete", danger: true }))) return;
     await deleteAppReview(user.uid);
     toast("Your review is deleted.");
   }
 
   return (
     <>
-      <PageHeader title="Rate Localink" subtitle="Tell us how Localink works for your shop. Your review is public and helps other merchants and buyers." />
+      <PageHeader title="Rate LocalinkGo" subtitle="Tell us how LocalinkGo works for your shop. Your review is public and helps other merchants and buyers." />
       {error && <p className="mb-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-800">{error}</p>}
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
@@ -56,7 +56,7 @@ export default function RateLocalinkPage() {
                   initial={appReview}
                   onSave={save}
                   onDelete={remove}
-                  placeholder="What works well? What should Localink do better for shops?"
+                  placeholder="What works well? What should LocalinkGo do better for shops?"
                 />
               </>
             )}
@@ -64,7 +64,7 @@ export default function RateLocalinkPage() {
 
           <section>
             <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-              <h2 className="font-bold">What people say about Localink</h2>
+              <h2 className="font-bold">What people say about LocalinkGo</h2>
               <Tabs
                 value={filter}
                 onChange={setFilter}
@@ -78,7 +78,7 @@ export default function RateLocalinkPage() {
             {reviews == null && !error ? (
               <div className="flex justify-center py-10"><Spinner /></div>
             ) : list.length === 0 ? (
-              <Empty title="No reviews yet" message="Be the first to review Localink." />
+              <Empty title="No reviews yet" message="Be the first to review LocalinkGo." />
             ) : (
               <div className="stagger space-y-3">
                 {list.map((r, i) => <ReviewItem key={r.id} review={r} mine={r.authorId === user.uid} index={i} />)}
@@ -87,7 +87,7 @@ export default function RateLocalinkPage() {
           </section>
         </div>
         <div>
-          <RatingSummary reviews={all} title="Localink" />
+          <RatingSummary reviews={all} title="LocalinkGo" />
         </div>
       </div>
     </>

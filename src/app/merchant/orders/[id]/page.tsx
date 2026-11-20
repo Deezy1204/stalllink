@@ -35,10 +35,10 @@ export default function MerchantOrderDetail() {
     setBusy(true);
     try {
       const blob = await receiptPdf(o!, shop);
-      const name = `Localink-receipt-${o!.id}.pdf`;
+      const name = `LocalinkGo-receipt-${o!.id}.pdf`;
       const file = new File([blob], name, { type: "application/pdf" });
       if (share && navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ files: [file], title: `Localink order #${o!.id}`, text: `Localink order #${o!.id} · ${usd(orderTotal(o!))} · ${shopName}` });
+        await navigator.share({ files: [file], title: `LocalinkGo order #${o!.id}`, text: `LocalinkGo order #${o!.id} · ${usd(orderTotal(o!))} · ${shopName}` });
       } else {
         download(blob, name);
         toast("Receipt saved.");
@@ -104,15 +104,15 @@ export default function MerchantOrderDetail() {
               <dt className="text-ink-3">Subtotal</dt><dd>{usd(o.items.reduce((s, i) => s + i.qty * i.unitPrice, 0))}</dd>
               {!!o.discount && (<><dt className="text-ink-3">{o.promoLabel || "Shop offer"}</dt><dd>−{usd(o.discount)}</dd></>)}
               {!!o.runnerFee && (<><dt className="text-ink-3">Delivery</dt><dd>{usd(o.runnerFee)}</dd></>)}
-              {!!o.serviceFee && (<><dt className="text-ink-3">Localink service fee (paid by the buyer)</dt><dd>{usd(o.serviceFee)}</dd></>)}
-              {!!o.localinkDiscount && (<><dt className="text-ink-3">{o.localinkLabel || "Localink discount"} (paid by Localink)</dt><dd className="text-mint-800">−{usd(o.localinkDiscount)}</dd></>)}
+              {!!o.serviceFee && (<><dt className="text-ink-3">LocalinkGo service fee (paid by the buyer)</dt><dd>{usd(o.serviceFee)}</dd></>)}
+              {!!o.localinkDiscount && (<><dt className="text-ink-3">{o.localinkLabel || "LocalinkGo discount"} (paid by LocalinkGo)</dt><dd className="text-mint-800">−{usd(o.localinkDiscount)}</dd></>)}
               <dt className="text-ink-3">Payment</dt><dd>{paymentTitle(o.payment)}</dd>
               <dt className="font-bold">Buyer pays</dt><dd className="text-lg font-extrabold text-brand">{usd(orderTotal(o))}</dd>
               {(!!o.serviceFee || viaLocalink(o)) && (<><dt className="text-ink-3">Your sale</dt><dd className="font-semibold">{usd(orderShare(o))}</dd></>)}
             </dl>
             {!!o.localinkDiscount && (
               <p className="mt-2 rounded-xl bg-mint-100 px-3 py-2 text-xs text-mint-800">
-                Localink gave the buyer {usd(o.localinkDiscount)} off and pays it to you: you get the full {usd(orderShare(o))}.
+                LocalinkGo gave the buyer {usd(o.localinkDiscount)} off and pays it to you: you get the full {usd(orderShare(o))}.
               </p>
             )}
           </Card>

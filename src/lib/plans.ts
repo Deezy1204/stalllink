@@ -1,6 +1,6 @@
-// Shop plans, free trials and Localink's own discounts for big buyers, the
-// same rules as the app (Localink/lib/data/models.dart) and the Cloud
-// Functions (Localink/functions/src/plans.ts). Prices, the Basic / Standard
+// Shop plans, free trials and LocalinkGo's own discounts for big buyers, the
+// same rules as the app (LocalinkGo/lib/data/models.dart) and the Cloud
+// Functions (LocalinkGo/functions/src/plans.ts). Prices, the Basic / Standard
 // fees and the product / branch limits are admin settings (`config/payments`);
 // the rest of what each plan includes is fixed here.
 //
@@ -28,7 +28,7 @@ export const TRIAL_ORDERS = 10;
 
 export const isPaidPlan = (v: unknown): v is Plan => v === "standard" || v === "pro" || v === "max";
 
-/** Buyers may pay the shop's own accounts (otherwise only Localink). */
+/** Buyers may pay the shop's own accounts (otherwise only LocalinkGo). */
 export const takesPayments = (p: Plan) => p === "pro" || p === "max";
 export type Limits = PaymentsConfig["limits"];
 
@@ -126,20 +126,20 @@ export function hiddenSummary(s: ShopDoc, limits: Limits): string | null {
   return parts.length ? parts.join(", ") : null;
 }
 
-/** What [plan] includes, with Localink's prices (same list as the app's Plans screen). */
+/** What [plan] includes, with LocalinkGo's prices (same list as the app's Plans screen). */
 export function planFeatures(plan: Plan, c: PaymentsConfig) {
   const lim = (n: number | null, unit: string) => (n == null ? "Unlimited" : n === 0 ? "None" : `Up to ${n} ${unit}`);
   const fee = feePercentOf(plan, c);
   const branches = branchLimit(plan, c.limits);
   return [
     { title: "Service fee on your orders", value: fee > 0 ? `${fee}% added to what buyers pay` : "None", ok: fee === 0 },
-    { title: "Take payments yourself", value: takesPayments(plan) ? "Yes: your EcoCash, bank and other accounts" : "No: buyers pay Localink, you get paid out", ok: takesPayments(plan) },
-    { title: "Payouts of Localink payments", value: PAYOUT_LABEL[plan], ok: true },
+    { title: "Take payments yourself", value: takesPayments(plan) ? "Yes: your EcoCash, bank and other accounts" : "No: buyers pay LocalinkGo, you get paid out", ok: takesPayments(plan) },
+    { title: "Payouts of LocalinkGo payments", value: PAYOUT_LABEL[plan], ok: true },
     { title: "Products buyers see", value: lim(productLimit(plan, c.limits), "products"), ok: true },
     { title: "Extra branches", value: lim(branches, branches === 1 ? "branch" : "branches"), ok: branches !== 0 },
     { title: "Shop offers on the whole basket", value: shopOffers(plan) ? "Yes" : "No (product discounts only)", ok: shopOffers(plan) },
     { title: "Bulk prices (cases, cartons, bales)", value: bulkPrices(plan) ? "Yes, for bulk buyers" : "No", ok: bulkPrices(plan) },
-    { title: "Online payments and Localink credits", value: "Yes", ok: true },
+    { title: "Online payments and LocalinkGo credits", value: "Yes", ok: true },
   ];
 }
 
@@ -147,7 +147,7 @@ export function planFeatures(plan: Plan, c: PaymentsConfig) {
 export const tierOffer = (t: { amount: number; percent: number }) =>
   `${[t.percent > 0 ? `${t.percent}%` : "", t.amount > 0 ? `$${Number.isInteger(t.amount) ? t.amount : t.amount.toFixed(2)}` : ""].filter(Boolean).join(" + ")} off`;
 
-/** Localink's discount on an order worth [goods] (same as functions rewardFor). */
+/** LocalinkGo's discount on an order worth [goods] (same as functions rewardFor). */
 export function rewardFor(r: PaymentsConfig["rewards"], goods: number, spentBefore = 0, usedBefore = 0): number {
   if (!r.enabled || goods <= 0) return 0;
   const spend = r.basis === "month" ? spentBefore + goods : goods;

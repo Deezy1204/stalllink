@@ -21,7 +21,7 @@ export function Shell({ children }: { children: ReactNode }) {
     { href: "/users", label: "Users", icon: "users" },
     { href: "/notify", label: "Send notification", icon: "bell" },
     { href: "/orders", label: "Orders", icon: "receipt" },
-    // Money sent to Localink: proofs to check (orders and Pro), and payouts to send.
+    // Money sent to LocalinkGo: proofs to check (orders and Pro), and payouts to send.
     {
       href: "/payments",
       label: "Payments to check",

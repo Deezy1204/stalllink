@@ -1,5 +1,5 @@
 // Notifications admins send to app users. The console files a `broadcasts`
-// doc; the Cloud Functions (Localink/functions/src/broadcasts.ts) write one
+// doc; the Cloud Functions (LocalinkGo/functions/src/broadcasts.ts) write one
 // notification per person, and each is pushed to that person's phones.
 
 import { addDoc, collection, limit, onSnapshot, orderBy, query, type Unsubscribe } from "firebase/firestore";
@@ -9,7 +9,7 @@ import type { BroadcastDoc, ShopDoc, UserDoc } from "./types";
 
 export type AccountType = "merchant" | "customer";
 
-/** A merchant sells on Localink: in Merchant mode or owning a shop (same rule as the functions). */
+/** A merchant sells on LocalinkGo: in Merchant mode or owning a shop (same rule as the functions). */
 export const accountType = (u: UserDoc, owners: Set<string>): AccountType => (owners.has(u.id) || u.role === "merchant" ? "merchant" : "customer");
 
 export const shopOwners = (shops: ShopDoc[]) => new Set(shops.map((s) => s.ownerId).filter(Boolean));
@@ -39,7 +39,7 @@ export async function sendBroadcast(
   return new Promise((resolve) => {
     const timer = setTimeout(() => {
       stop();
-      resolve({ error: "Still sending. It goes out as soon as Localink has processed it; check the list below in a minute." });
+      resolve({ error: "Still sending. It goes out as soon as LocalinkGo has processed it; check the list below in a minute." });
     }, 60_000);
     const stop = onSnapshot(ref, (s) => {
       const d = s.data();

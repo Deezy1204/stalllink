@@ -12,7 +12,7 @@ import { kycLabel, shortDate } from "@/lib/types";
 /**
  * Shop owners verify who they are with Didit (a photo of their ID and a
  * selfie), the same check as the app's "Verify your identity". Until it
- * passes, their shops show "Not verified" and Localink cannot verify them.
+ * passes, their shops show "Not verified" and LocalinkGo cannot verify them.
  */
 export default function VerifyPage() {
   const { profile, user, shops } = useMerchant();
@@ -54,7 +54,7 @@ export default function VerifyPage() {
   }
 
   const status: Record<string, string> = {
-    approved: `Your identity is verified${k.updatedAt ? ` (${shortDate(k.updatedAt)})` : ""}. Localink can now verify your shops.`,
+    approved: `Your identity is verified${k.updatedAt ? ` (${shortDate(k.updatedAt)})` : ""}. LocalinkGo can now verify your shops.`,
     inReview: "Didit is reviewing your documents. This usually takes a few minutes; we will tell you when it is done.",
     pending: "Started. Finish the steps on the Didit page, then come back here.",
     declined: `The check did not pass${k.reason ? `: ${k.reason}` : ""}. You can try again with a clear photo of a valid ID.`,
@@ -65,7 +65,7 @@ export default function VerifyPage() {
 
   return (
     <div className="mx-auto max-w-2xl">
-      <PageHeader title="Verify your identity" subtitle="Needed before Localink can verify your shops" />
+      <PageHeader title="Verify your identity" subtitle="Needed before LocalinkGo can verify your shops" />
       <Card className="p-6">
         <div className="flex items-start gap-4">
           <span className={`flex size-14 shrink-0 items-center justify-center rounded-2xl ${done ? "bg-mint-100 text-mint-700" : "bg-brand-50 text-brand"}`}>
@@ -74,7 +74,7 @@ export default function VerifyPage() {
           <div>
             <p className="text-lg font-bold">{done ? "You are verified" : "Sell as a verified owner"}</p>
             <p className="mt-1 text-sm text-ink-3">
-              Localink checks the identity of everyone who sells, so buyers abroad know who they are paying. Your shops get the green verified tick once your identity and the shop are
+              LocalinkGo checks the identity of everyone who sells, so buyers abroad know who they are paying. Your shops get the green verified tick once your identity and the shop are
               both verified.
             </p>
           </div>
@@ -100,7 +100,7 @@ export default function VerifyPage() {
           </>
         )}
         {done && <Link href="/merchant" className="mt-6 inline-flex h-10 items-center rounded-xl bg-brand px-4 text-sm font-semibold text-white">Continue</Link>}
-        <p className="mt-6 flex items-center gap-1.5 text-xs text-ink-3"><Icon name="shieldCheck" className="size-4" /> Your documents go to Didit, our identity partner. Localink keeps only the result.</p>
+        <p className="mt-6 flex items-center gap-1.5 text-xs text-ink-3"><Icon name="shieldCheck" className="size-4" /> Your documents go to Didit, our identity partner. LocalinkGo keeps only the result.</p>
       </Card>
     </div>
   );

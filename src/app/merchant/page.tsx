@@ -24,7 +24,7 @@ export default function MerchantOverview() {
   const pending = shopOrders.filter((o) => o.status === "readyForPickup");
   const recent = shopOrders.filter((o) => o.status !== "readyForPickup").slice(0, 4);
   const thisMonth = shopOrders.filter((o) => o.status !== "cancelled" && monthKey(o.createdAt) === monthKey(Date.now()));
-  // The shop's own takings: Localink's service fee is not the shop's revenue.
+  // The shop's own takings: LocalinkGo's service fee is not the shop's revenue.
   const sold = thisMonth.reduce((s, o) => s + orderShare(o), 0);
   const items = thisMonth.reduce((s, o) => s + o.items.reduce((a, i) => a + i.qty, 0), 0);
   const toCheck = shopOrders.filter((o) => o.payTo !== "localink" && o.paymentStatus === "proofSent").length;
@@ -71,9 +71,9 @@ export default function MerchantOverview() {
               <p className="flex items-center gap-1.5 text-xl font-extrabold">
                 {shop.name}
                 {isVerified(shop) ? (
-                  <span className="text-mint-600"><Icon name="verified" className="size-5" title="Verified by Localink, owner identity checked" play /></span>
+                  <span className="text-mint-600"><Icon name="verified" className="size-5" title="Verified by LocalinkGo, owner identity checked" play /></span>
                 ) : (
-                  <span className="rounded-full bg-surface-2 px-2 py-0.5 text-xs font-bold text-ink-2" title={shop.ownerVerified ? "Localink has not verified this shop yet" : "Your identity is not verified yet"}>Not verified</span>
+                  <span className="rounded-full bg-surface-2 px-2 py-0.5 text-xs font-bold text-ink-2" title={shop.ownerVerified ? "LocalinkGo has not verified this shop yet" : "Your identity is not verified yet"}>Not verified</span>
                 )}
               </p>
               <p className="text-sm text-ink-3">{[shop.standNo, shop.suburb, shop.city].filter(Boolean).join(" · ")}</p>
@@ -92,15 +92,15 @@ export default function MerchantOverview() {
           <Icon name="shieldCheck" className="size-5 shrink-0 text-brand" />
           <span className="flex-1">
             <b>{kyc === "inReview" ? "Your identity is being reviewed." : "Verify your identity."}</b>{" "}
-            {kyc === "inReview" ? "Your shops show “Not verified” until Didit finishes." : `Your shops show “Not verified” and Localink cannot verify them until you do (${kycLabel[kyc].toLowerCase()}). Two minutes with Didit. ›`}
+            {kyc === "inReview" ? "Your shops show “Not verified” until Didit finishes." : `Your shops show “Not verified” and LocalinkGo cannot verify them until you do (${kycLabel[kyc].toLowerCase()}). Two minutes with Didit. ›`}
           </span>
         </Link>
       )}
       {(shop.suspended || (!shop.verified && shop.ownerVerified)) && (
         <p className={`mt-3 rounded-2xl px-4 py-3 text-sm ${shop.suspended ? "bg-red-50 text-red-800" : "bg-amber-50 text-amber-900"}`}>
           {shop.suspended
-            ? "Localink has paused this shop, so buyers cannot see it. Contact support."
-            : "Localink is checking this shop. Buyers can already order; the verified tick appears once it is approved."}
+            ? "LocalinkGo has paused this shop, so buyers cannot see it. Contact support."
+            : "LocalinkGo is checking this shop. Buyers can already order; the verified tick appears once it is approved."}
         </p>
       )}
       {hidden && (
@@ -134,7 +134,7 @@ export default function MerchantOverview() {
       <div className="mt-3 grid gap-3 md:grid-cols-3">
         <Link href="/merchant/earnings" className="group">
           <Card className="h-full p-4 transition group-hover:-translate-y-0.5 group-hover:shadow-md">
-            <p className="text-xs font-semibold text-ink-3">Earnings with Localink</p>
+            <p className="text-xs font-semibold text-ink-3">Earnings with LocalinkGo</p>
             <p className="mt-1 text-2xl font-extrabold">{usd(wallet?.balance ?? 0)}</p>
             <p className="text-xs text-ink-3">{wallet?.pending ? `${usd(wallet.pending)} pending collection · ` : ""}paid out {PAYOUT_LABEL[plan].toLowerCase()}</p>
           </Card>
@@ -166,7 +166,7 @@ export default function MerchantOverview() {
       {appReview === null && (
         <Link href="/merchant/feedback" className="group mt-3 flex items-center gap-3 rounded-2xl border border-accent/30 bg-accent-50 px-4 py-3 text-sm text-accent-800 hover:bg-accent/15">
           <Icon name="star" className="size-5 shrink-0 text-accent" />
-          <span className="flex-1"><b>How is Localink working for you?</b> Rate and review it in a minute. ›</span>
+          <span className="flex-1"><b>How is LocalinkGo working for you?</b> Rate and review it in a minute. ›</span>
         </Link>
       )}
 

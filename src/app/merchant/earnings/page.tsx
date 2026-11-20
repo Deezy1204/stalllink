@@ -15,7 +15,7 @@ import { cents, paymentTitle, shortDate, usd, type LedgerDoc, type PayoutDoc } f
 
 /**
  * What a payout is made of: the sales collected since the previous payout at
- * their full price, the part of that Localink took off for buyers (and pays
+ * their full price, the part of that LocalinkGo took off for buyers (and pays
  * itself), what buyers paid, and anything else that changed the balance.
  */
 function PayoutBreakdown({ payout: p }: { payout: PayoutDoc }) {
@@ -31,9 +31,9 @@ function PayoutBreakdown({ payout: p }: { payout: PayoutDoc }) {
   return (
     <dl className="mt-3 space-y-1.5 rounded-xl bg-surface p-3 text-sm">
       {row(`Purchased (${b.orders} order${b.orders === 1 ? "" : "s"})`, usd(b.sales))}
-      {row("Discounted by Localink", b.localinkDiscount ? `−${usd(b.localinkDiscount)}` : usd(0))}
+      {row("Discounted by LocalinkGo", b.localinkDiscount ? `−${usd(b.localinkDiscount)}` : usd(0))}
       {row("Buyers paid", usd(cents(b.sales - b.localinkDiscount)))}
-      {b.localinkDiscount > 0 && row("Localink pays the discount", `+${usd(b.localinkDiscount)}`, false, "text-mint-800")}
+      {b.localinkDiscount > 0 && row("LocalinkGo pays the discount", `+${usd(b.localinkDiscount)}`, false, "text-mint-800")}
       {Math.abs(other) >= 0.01 && row(other < 0 ? "Spent from earnings" : "Earlier earnings", `${other < 0 ? "−" : "+"}${usd(Math.abs(other))}`)}
       {row("Paid to you", usd(p.amount), true)}
     </dl>
@@ -49,7 +49,7 @@ const ledgerTitle: Record<string, string> = {
   payout_reversed: "Payout returned",
 };
 
-/** The active shop's money held by Localink: available and pending, payouts, and every change. */
+/** The active shop's money held by LocalinkGo: available and pending, payouts, and every change. */
 export default function EarningsPage() {
   const { shop, user, loaded, wallet, profile, config } = useMerchant();
   const toast = useToast();
@@ -106,7 +106,7 @@ export default function EarningsPage() {
 
       <div className="mt-4 grid gap-4 md:grid-cols-2">
         <Card className={`p-4 ${w?.payout ? "" : "border-amber-300 bg-amber-50"}`}>
-          <p className="text-xs font-semibold text-ink-3">Where Localink pays you</p>
+          <p className="text-xs font-semibold text-ink-3">Where LocalinkGo pays you</p>
           {w?.payout ? (
             <>
               <p className="mt-1 font-bold">{paymentTitle(w.payout)}</p>
@@ -142,7 +142,7 @@ export default function EarningsPage() {
         </Link>
         <Card className="p-4">
           <p className="font-bold">Shop at other shops</p>
-          <p className="text-sm text-ink-3">In the Localink app, choose &quot;Credits from {shop.name}&quot; at checkout.</p>
+          <p className="text-sm text-ink-3">In the LocalinkGo app, choose &quot;Credits from {shop.name}&quot; at checkout.</p>
         </Card>
       </div>
 
@@ -160,7 +160,7 @@ export default function EarningsPage() {
                     {[
                       shortDate(p.handledAt ?? p.createdAt),
                       p.breakdown?.orders && `${p.breakdown.orders} order${p.breakdown.orders === 1 ? "" : "s"}`,
-                      p.breakdown?.localinkDiscount && `${usd(p.breakdown.localinkDiscount)} discounts paid by Localink`,
+                      p.breakdown?.localinkDiscount && `${usd(p.breakdown.localinkDiscount)} discounts paid by LocalinkGo`,
                       p.to && paymentTitle(p.to),
                       p.reference && `ref ${p.reference}`,
                       p.note,
@@ -177,17 +177,17 @@ export default function EarningsPage() {
 
       <h2 className="mb-3 mt-8 font-bold">Activity</h2>
       {ledger.length === 0 ? (
-        <Card className="p-4 text-sm text-ink-3">Nothing yet. Orders paid through Localink show here: pending once paid, available once collected.</Card>
+        <Card className="p-4 text-sm text-ink-3">Nothing yet. Orders paid through LocalinkGo show here: pending once paid, available once collected.</Card>
       ) : (
         <Card className="divide-y divide-line">
           {ledger.map((e) => (
             <div key={e.id} className="flex items-center gap-3 px-4 py-3 text-sm">
               <span className="min-w-0 flex-1">
-                <span className="block font-semibold">{ledgerTitle[e.type] ?? "Adjustment by Localink"}</span>
+                <span className="block font-semibold">{ledgerTitle[e.type] ?? "Adjustment by LocalinkGo"}</span>
                 <span className="block truncate text-xs text-ink-3">
                   {relativeDay(e.createdAt)}
                   {e.note ? ` · ${e.note}` : ""}
-                  {e.localinkDiscount ? ` · includes ${usd(e.localinkDiscount)} Localink pays for the buyer's discount` : ""}
+                  {e.localinkDiscount ? ` · includes ${usd(e.localinkDiscount)} LocalinkGo pays for the buyer's discount` : ""}
                   {e.orderId && (
                     <>
                       {" · "}
@@ -203,7 +203,7 @@ export default function EarningsPage() {
           ))}
         </Card>
       )}
-      <p className="mt-6 flex items-center justify-center gap-1.5 text-center text-xs text-ink-3"><Icon name="shieldCheck" className="size-4" /> Only Localink can change your balance. Every change is listed here.</p>
+      <p className="mt-6 flex items-center justify-center gap-1.5 text-center text-xs text-ink-3"><Icon name="shieldCheck" className="size-4" /> Only LocalinkGo can change your balance. Every change is listed here.</p>
 
       {editing && (
         <PaymentForm

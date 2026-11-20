@@ -28,7 +28,7 @@ export default function Dashboard() {
   const peak = Math.max(1, ...months.map((m) => m.total));
 
   const toVerify = shops.filter((s) => !s.verified && !s.suspended);
-  // Proofs of transfers to Localink, which Localink confirms (shops confirm their own).
+  // Proofs of transfers to LocalinkGo, which LocalinkGo confirms (shops confirm their own).
   const proofs = orders.filter((o) => o.payTo === "localink" && o.paymentStatus === "proofSent");
   const newRequests = nominations.filter((n) => n.status === "new").length;
   const stats: { label: string; value: string | number; href: string; icon: IconName; alert?: boolean }[] = [
@@ -44,7 +44,7 @@ export default function Dashboard() {
 
   return (
     <>
-      <PageHeader title="Dashboard" subtitle={`Localink at a glance · ${now.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}`} />
+      <PageHeader title="Dashboard" subtitle={`LocalinkGo at a glance · ${now.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}`} />
       {error && <p className="mb-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-800">{error}</p>}
       {!loaded ? (
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
@@ -69,7 +69,7 @@ export default function Dashboard() {
             <Card className="p-5 lg:col-span-3">
               <div className="mb-4 flex items-baseline justify-between">
                 <h2 className="font-bold">Sales, last 6 months</h2>
-                <p className="text-xs text-ink-3">Orders placed through Localink (paid to shops directly)</p>
+                <p className="text-xs text-ink-3">Orders placed through LocalinkGo (paid to shops directly)</p>
               </div>
               <div className="flex h-48 items-end gap-3">
                 {months.map((m, i) => (

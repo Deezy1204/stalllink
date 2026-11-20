@@ -1,8 +1,9 @@
-/** "localink" set like the logo: dark "local", teal "ink". */
+/** "localinkGo" set like the logo: dark "local", teal "ink", orange "Go" (the pin's second ring). */
 export function Wordmark({ className = "text-lg" }: { className?: string }) {
   return (
-    <span className={`font-extrabold tracking-tight text-[#13261f] ${className}`}>
+    <span className={`font-extrabold tracking-tight text-[#13261f] ${className}`} aria-label="LocalinkGo">
       local<span className="text-[#0e8a73]">ink</span>
+      <span className="text-[#e69a27]">Go</span>
     </span>
   );
 }
@@ -32,6 +33,12 @@ export function BrandInline({ label }: { label: string }) {
 }
 
 /** The full logo (pin, wordmark and "Local marketplace"), for the sign-in page. */
-export function FullLogo({ className = "h-32" }: { className?: string }) {
-  return <img src="/brand/localink-logo.png" alt="Localink, local marketplace" className={`w-auto ${className}`} />;
+export function FullLogo({ className = "" }: { className?: string }) {
+  return (
+    <span className={`flex flex-col items-center ${className}`} role="img" aria-label="LocalinkGo, local marketplace">
+      <img src="/brand/localink-mark.svg" alt="" className="size-20 drop-shadow-sm" />
+      <Wordmark className="mt-2 text-4xl" />
+      <span className="mt-1 text-[10px] font-bold uppercase tracking-[0.35em] text-[#13261f]">Local marketplace</span>
+    </span>
+  );
 }

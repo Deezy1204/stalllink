@@ -11,7 +11,7 @@ import type { ReviewDoc } from "@/lib/types";
 type Kind = "shops" | "localink";
 type Filter = "all" | "low" | "hidden";
 
-/** Every review of a shop or of Localink. Admins hide abusive ones (they leave public lists and ratings) or delete them. */
+/** Every review of a shop or of LocalinkGo. Admins hide abusive ones (they leave public lists and ratings) or delete them. */
 export default function ReviewsPage() {
   const { shopReviews, appReviews, shops, loaded } = useAdminData();
   const confirm = useConfirm();
@@ -55,14 +55,14 @@ export default function ReviewsPage() {
 
   return (
     <>
-      <PageHeader title="Reviews" subtitle="Ratings of shops and of Localink. Reviews are public; hide the abusive ones." />
+      <PageHeader title="Reviews" subtitle="Ratings of shops and of LocalinkGo. Reviews are public; hide the abusive ones." />
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <Tabs
           value={kind}
           onChange={(k) => { setKind(k); setFilter("all"); }}
           options={[
             { value: "shops", label: "Shops", count: shopReviews.length },
-            { value: "localink", label: "Localink", count: appReviews.length },
+            { value: "localink", label: "LocalinkGo", count: appReviews.length },
           ]}
         />
       </div>
@@ -84,7 +84,7 @@ export default function ReviewsPage() {
           {!loaded ? (
             <div className="space-y-3">{Array.from({ length: 4 }, (_, i) => <div key={i} className="h-28 animate-pulse rounded-2xl bg-white" />)}</div>
           ) : list.length === 0 ? (
-            <Empty title="No reviews here" message={kind === "shops" ? "Buyers rate shops in the app." : "Buyers rate Localink in the app; shop owners in the merchant console."} />
+            <Empty title="No reviews here" message={kind === "shops" ? "Buyers rate shops in the app." : "Buyers rate LocalinkGo in the app; shop owners in the merchant console."} />
           ) : (
             <div className="stagger space-y-3">
               {list.map((r, i) => (
@@ -115,7 +115,7 @@ export default function ReviewsPage() {
           )}
           <RatingSummary
             reviews={source.filter((r) => !r.hidden)}
-            title={kind === "localink" ? "Localink" : shopId ? shopName(shopId) : "All shops"}
+            title={kind === "localink" ? "LocalinkGo" : shopId ? shopName(shopId) : "All shops"}
           />
           <p className="px-1 text-xs text-ink-3">Hidden reviews are not counted. Shop ratings update a few seconds after a change.</p>
         </div>

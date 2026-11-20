@@ -1,5 +1,5 @@
-// Shapes of the Firestore documents written by the Localink mobile app
-// (see Localink/lib/data/serialization.dart). Fields are optional where
+// Shapes of the Firestore documents written by the LocalinkGo mobile app
+// (see LocalinkGo/lib/data/serialization.dart). Fields are optional where
 // older documents may not have them.
 
 export type Mode = "customer" | "merchant";
@@ -163,9 +163,9 @@ export interface ShopDoc {
   /** Average of the visible reviews and how many there are (kept up to date by the Cloud Functions). */
   rating?: number;
   reviewCount?: number;
-  /** Pro paid up to this moment (epoch millis), from before there were several plans. Only Localink sets it. */
+  /** Pro paid up to this moment (epoch millis), from before there were several plans. Only LocalinkGo sets it. */
   proUntil?: number;
-  /** The paid plan ("standard" | "pro" | "max") and until when it is paid. Only Localink sets them. */
+  /** The paid plan ("standard" | "pro" | "max") and until when it is paid. Only LocalinkGo sets them. */
   plan?: string;
   planUntil?: number;
   /** The current or last free trial (7 days or 10 orders), and every plan already tried. */
@@ -177,12 +177,12 @@ export interface ShopDoc {
   promo?: ShopPromo | null;
 }
 
-/** Buyers see the green tick: Localink verified the shop and its owner's identity. */
+/** Buyers see the green tick: LocalinkGo verified the shop and its owner's identity. */
 export const isVerified = (s: Pick<ShopDoc, "verified" | "ownerVerified">) => s.verified === true && s.ownerVerified === true;
 
 /**
  * A public rating (1–5) with an optional comment: of a shop (`shopReviews`,
- * keyed "<shopId>_<uid>") or of Localink itself (`appReviews`, keyed by uid).
+ * keyed "<shopId>_<uid>") or of LocalinkGo itself (`appReviews`, keyed by uid).
  */
 export interface ReviewDoc {
   id: string;
@@ -196,7 +196,7 @@ export interface ReviewDoc {
   hidden: boolean;
   /** The author collected an order at this shop (set by the Cloud Functions). */
   verifiedOrder?: boolean;
-  /** Reviews of Localink: the mode they were written in, and where. */
+  /** Reviews of LocalinkGo: the mode they were written in, and where. */
   role?: Mode;
   source?: "app" | "web";
   createdAt: number; // epoch millis
@@ -237,26 +237,26 @@ export interface OrderDoc {
   senderMessage?: string;
   /** Collection point chosen for the order (null = the main stall). */
   branch?: Branch | null;
-  /** Who receives the money: the shop itself (Pro shops only), or Localink, which pays the shop out. Missing = shop. */
+  /** Who receives the money: the shop itself (Pro shops only), or LocalinkGo, which pays the shop out. Missing = shop. */
   payTo?: "shop" | "localink";
-  /** How Localink was paid (set by Localink when it confirms the payment). */
+  /** How LocalinkGo was paid (set by LocalinkGo when it confirms the payment). */
   paidVia?: "transfer" | "online" | "credits";
-  /** The buyer's shop whose Localink credits paid it. */
+  /** The buyer's shop whose LocalinkGo credits paid it. */
   paidFromShopId?: string;
   paidAt?: number;
   /** Taken off by the shop's offer (`promoLabel` says which). */
   discount?: number;
   promoLabel?: string;
-  /** Localink's fee at Basic and Standard shops, paid by the buyer. */
+  /** LocalinkGo's fee at Basic and Standard shops, paid by the buyer. */
   serviceFee?: number;
-  /** Taken off by Localink's own discount for big baskets (`localinkLabel` says which). Localink pays it; the shop gets its full price. */
+  /** Taken off by LocalinkGo's own discount for big baskets (`localinkLabel` says which). LocalinkGo pays it; the shop gets its full price. */
   localinkDiscount?: number;
   localinkLabel?: string;
-  /** Localink has checked the charges against the shop's plan. */
+  /** LocalinkGo has checked the charges against the shop's plan. */
   chargesChecked?: boolean;
 }
 
-/** Localink's discount for customers who buy a lot: tiers on the basket (or the last 30 days). */
+/** LocalinkGo's discount for customers who buy a lot: tiers on the basket (or the last 30 days). */
 export interface RewardsConfig {
   enabled: boolean;
   basis: "order" | "month";
@@ -272,9 +272,9 @@ export interface PlanLimit {
   branches: number | null;
 }
 
-/** Localink's payment settings (`config/payments`). */
+/** LocalinkGo's payment settings (`config/payments`). */
 export interface PaymentsConfig {
-  /** Localink's accounts buyers and shops pay into. */
+  /** LocalinkGo's accounts buyers and shops pay into. */
   options: PaymentOption[];
   onlineEnabled: boolean;
   /** Price of one month of each paid plan. */
@@ -289,7 +289,7 @@ export interface PaymentsConfig {
   limits: Record<"basic" | "standard" | "pro" | "max", PlanLimit>;
 }
 
-/** What Localink holds for one shop (`wallets/{shopId}`); only the Cloud Functions change the amounts. */
+/** What LocalinkGo holds for one shop (`wallets/{shopId}`); only the Cloud Functions change the amounts. */
 export interface WalletDoc {
   shopId: string;
   ownerId?: string;
@@ -302,7 +302,7 @@ export interface WalletDoc {
   autoPayout: boolean;
   autoRenew: boolean;
   lastPayoutAt?: number;
-  /** All of Localink's discounts on this shop's collected sales (Localink paid them). */
+  /** All of LocalinkGo's discounts on this shop's collected sales (LocalinkGo paid them). */
   localinkDiscounts?: number;
 }
 
@@ -314,7 +314,7 @@ export interface LedgerDoc {
   note?: string;
   orderId?: string | null;
   createdAt: number;
-  /** For a sale: the part Localink paid as the buyer's discount. */
+  /** For a sale: the part LocalinkGo paid as the buyer's discount. */
   localinkDiscount?: number;
 }
 
@@ -325,7 +325,7 @@ export interface PayoutDoc {
   amount: number;
   to?: PaymentOption;
   plan?: string;
-  /** The sales collected since the shop's previous payout (full price), and how much of that Localink paid as discounts. */
+  /** The sales collected since the shop's previous payout (full price), and how much of that LocalinkGo paid as discounts. */
   breakdown?: { orders: number; sales: number; localinkDiscount: number };
   status: "pending" | "paid" | "failed";
   reference?: string;
@@ -334,7 +334,7 @@ export interface PayoutDoc {
   handledAt?: number;
 }
 
-/** A plan paid by transfer to Localink, with proof for an admin to check. */
+/** A plan paid by transfer to LocalinkGo, with proof for an admin to check. */
 export interface PlanPaymentDoc {
   id: string;
   shopId: string;
@@ -420,16 +420,16 @@ export function paymentTitle(p?: PaymentOption): string {
 /** Whole cents. */
 export const cents = (v: number) => Math.round(v * 100) / 100;
 
-/** What the buyer pays: items, less the shop offer and Localink's discount, plus delivery and Localink's service fee. */
+/** What the buyer pays: items, less the shop offer and LocalinkGo's discount, plus delivery and LocalinkGo's service fee. */
 export const orderTotal = (o: OrderDoc) =>
   cents(o.items.reduce((s, i) => s + i.qty * i.unitPrice, 0) - (o.discount ?? 0) + (o.runnerFee ?? 0) + (o.serviceFee ?? 0) - (o.localinkDiscount ?? 0));
 
-/** What the shop gets: everything but Localink's service fee; Localink pays its own discount to the shop. */
+/** What the shop gets: everything but LocalinkGo's service fee; LocalinkGo pays its own discount to the shop. */
 export const orderShare = (o: OrderDoc) => cents(orderTotal(o) - (o.serviceFee ?? 0) + (o.localinkDiscount ?? 0));
 
 export const viaLocalink = (o: OrderDoc) => o.payTo === "localink";
 
-export const paidViaLabel: Record<NonNullable<OrderDoc["paidVia"]>, string> = { transfer: "Transfer to Localink", online: "Paid online", credits: "Localink credits" };
+export const paidViaLabel: Record<NonNullable<OrderDoc["paidVia"]>, string> = { transfer: "Transfer to LocalinkGo", online: "Paid online", credits: "LocalinkGo credits" };
 
 
 /** A discount or offer that applies right now. */

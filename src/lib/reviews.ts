@@ -1,5 +1,5 @@
-// Reviews of shops and of Localink, read and written the way the mobile app
-// does it (Localink/lib/data/serialization.dart reviewToMap), so a review
+// Reviews of shops and of LocalinkGo, read and written the way the mobile app
+// does it (LocalinkGo/lib/data/serialization.dart reviewToMap), so a review
 // written on one shows on the other. Everyone can read visible reviews; the
 // Cloud Functions keep each shop's rating in step with them.
 
@@ -38,7 +38,7 @@ export function summarize(reviews: ReviewDoc[]) {
 
 export const ratingWord = (n: number) => ["", "Poor", "Fair", "Good", "Very good", "Excellent"][n] ?? "";
 
-/** "Shop owner" / "Buyer" for a review of Localink. */
+/** "Shop owner" / "Buyer" for a review of LocalinkGo. */
 export const roleLabel = (r: ReviewDoc) => (r.role === "merchant" ? "Shop owner" : r.role === "customer" ? "Buyer" : "");
 
 // ---- shop reviews ---------------------------------------------------------------
@@ -51,9 +51,9 @@ export const watchShopReviews = (shopId: string, on: (v: ReviewDoc[]) => void, o
     onError,
   );
 
-// ---- reviews of Localink ----------------------------------------------------------
+// ---- reviews of LocalinkGo ----------------------------------------------------------
 
-/** Every visible review of Localink, newest first. */
+/** Every visible review of LocalinkGo, newest first. */
 export const watchAppReviews = (on: (v: ReviewDoc[]) => void, onError: (e: Error) => void): Unsubscribe =>
   onSnapshot(
     query(collection(db(), "appReviews"), where("hidden", "==", false)),
@@ -61,11 +61,11 @@ export const watchAppReviews = (on: (v: ReviewDoc[]) => void, onError: (e: Error
     onError,
   );
 
-/** The account's own review of Localink (also when an admin has hidden it), or null. */
+/** The account's own review of LocalinkGo (also when an admin has hidden it), or null. */
 export const watchMyAppReview = (uid: string, on: (v: ReviewDoc | null) => void, onError: (e: Error) => void): Unsubscribe =>
   onSnapshot(doc(db(), "appReviews", uid), (s) => on(s.exists() ? toReview(s.id, s.data()) : null), onError);
 
-/** Writes the account's review of Localink from the web console. */
+/** Writes the account's review of LocalinkGo from the web console. */
 export async function saveAppReview(uid: string, existing: ReviewDoc | null, r: { authorName: string; rating: number; comment: string; role: Mode }) {
   const now = Date.now();
   const fields = { authorName: r.authorName.trim().slice(0, 80), rating: r.rating, comment: r.comment.trim().slice(0, MAX_COMMENT), role: r.role, source: "web", updatedAt: now };

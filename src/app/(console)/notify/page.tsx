@@ -148,7 +148,7 @@ export default function NotifyPage() {
                   : audience === "merchants"
                     ? "Accounts in Merchant mode or owning a shop. Suspended accounts are left out."
                     : audience === "customers"
-                      ? "Everyone who does not sell on Localink. Suspended accounts are left out."
+                      ? "Everyone who does not sell on LocalinkGo. Suspended accounts are left out."
                       : "Every account except suspended ones."}
               </p>
             </div>
@@ -186,7 +186,7 @@ export default function NotifyPage() {
               <div className="flex items-start gap-3 rounded-xl bg-white/10 p-3">
                 <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-brand text-sm font-extrabold">L</span>
                 <span className="min-w-0">
-                  <span className="flex items-center gap-2 text-xs text-white/60">Localink · now</span>
+                  <span className="flex items-center gap-2 text-xs text-white/60">LocalinkGo · now</span>
                   <span className="block truncate text-sm font-bold">{title.trim() || "Your title"}</span>
                   <span className="block text-sm text-white/80 [overflow-wrap:anywhere]">{body.trim() || "Your message shows here."}</span>
                 </span>

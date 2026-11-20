@@ -140,7 +140,7 @@ export function ShopForm({ shop }: { shop: ShopDoc | null }) {
     !f.week.some((d) => d.open) && "opening hours",
   ].filter(Boolean) as string[];
   const done = 5 - missing.length;
-  // Only Pro and Max shops take payments themselves; others are paid through Localink.
+  // Only Pro and Max shops take payments themselves; others are paid through LocalinkGo.
   const plan = planOf(shop);
   const pro = takesPayments(plan);
   const feePercent = feePercentOf(plan, config);
@@ -341,8 +341,8 @@ export function ShopForm({ shop }: { shop: ShopDoc | null }) {
           title="How buyers pay you"
           subtitle={
             pro
-              ? "Your own accounts: buyers pay you and upload proof, you confirm it. They can also pay through Localink (online or credits)."
-              : "Buyers pay through Localink: online, by transfer or with credits. Localink pays your earnings out to you."
+              ? "Your own accounts: buyers pay you and upload proof, you confirm it. They can also pay through LocalinkGo (online or credits)."
+              : "Buyers pay through LocalinkGo: online, by transfer or with credits. LocalinkGo pays your earnings out to you."
           }
         >
           {!pro && (
@@ -366,7 +366,7 @@ export function ShopForm({ shop }: { shop: ShopDoc | null }) {
             ))}
           </div>
           {pro && <Button variant="secondary" className="mt-3" onClick={() => setPayment("new")}>{f.payments.length ? "+ Add another payment method" : "+ Add payment method"}</Button>}
-          {shop && <Link href="/merchant/earnings" className="mt-3 block text-sm font-semibold text-brand hover:underline">Where Localink pays you (payouts) ›</Link>}
+          {shop && <Link href="/merchant/earnings" className="mt-3 block text-sm font-semibold text-brand hover:underline">Where LocalinkGo pays you (payouts) ›</Link>}
         </Section>
 
         <Section
@@ -450,7 +450,7 @@ export function ShopForm({ shop }: { shop: ShopDoc | null }) {
   );
 }
 
-/** Payment details: a Pro shop's account buyers pay into, or with [payout] where Localink pays the shop. */
+/** Payment details: a Pro shop's account buyers pay into, or with [payout] where LocalinkGo pays the shop. */
 export function PaymentForm({
   existing,
   defaultAccountName,
@@ -483,10 +483,10 @@ export function PaymentForm({
     <Modal
       open
       onClose={onClose}
-      title={payout ? "Where Localink pays you" : existing ? "Edit payment method" : "Add payment method"}
+      title={payout ? "Where LocalinkGo pays you" : existing ? "Edit payment method" : "Add payment method"}
       footer={<><Button variant="secondary" onClick={onClose}>Cancel</Button><Button onClick={save}>{payout ? "Save payout account" : "Save payment method"}</Button></>}
     >
-      <p className="mb-3 text-sm text-ink-3">{payout ? "Localink sends your earnings to this account. Only you and Localink see it." : "Buyers see these details at checkout and pay you directly."}</p>
+      <p className="mb-3 text-sm text-ink-3">{payout ? "LocalinkGo sends your earnings to this account. Only you and LocalinkGo see it." : "Buyers see these details at checkout and pay you directly."}</p>
       <p className="mb-2 text-sm font-semibold">Type</p>
       <div className="mb-4 flex flex-wrap gap-2">{PAYMENT_TYPES.map((t) => <Pill key={t.id} selected={type === t.id} onClick={() => setType(t.id)}>{t.label}</Pill>)}</div>
       <div className="space-y-3">

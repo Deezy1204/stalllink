@@ -21,7 +21,7 @@ interface Month {
 }
 
 function summarise(key: string, orders: OrderDoc[]): Month {
-  // The shop's share: Localink's service fee is not the shop's revenue.
+  // The shop's share: LocalinkGo's service fee is not the shop's revenue.
   const sum = (l: OrderDoc[]) => l.reduce((s, o) => s + orderShare(o), 0);
   return {
     key,
@@ -33,7 +33,7 @@ function summarise(key: string, orders: OrderDoc[]): Month {
   };
 }
 
-/** What the active shop sold through Localink, month by month (its share, without Localink's service fee). Money Localink holds is on Earnings. */
+/** What the active shop sold through LocalinkGo, month by month (its share, without LocalinkGo's service fee). Money LocalinkGo holds is on Earnings. */
 export default function RevenuePage() {
   const { shop, shopOrders, loaded } = useMerchant();
   const toast = useToast();
@@ -64,7 +64,7 @@ export default function RevenuePage() {
     setBusy(`${m.key}-${kind}`);
     try {
       const blob = kind === "pdf" ? await earningsPdf(`${shop!.name} - ${monthLabel(m.key)}`, m.orders) : earningsCsv(m.orders);
-      download(blob, `Localink-${m.key}.${kind}`);
+      download(blob, `LocalinkGo-${m.key}.${kind}`);
       toast("Report saved.");
     } catch (e) {
       toast(`Could not make the report: ${(e as Error).message}`, "error");
@@ -137,7 +137,7 @@ export default function RevenuePage() {
                           </span>
                           <span className="min-w-0 flex-1">
                             <span className="block truncate font-semibold">#{o.id} · {o.recipient?.name}</span>
-                            <span className="block truncate text-xs text-ink-3">{dayMonthYear(o.createdAt)} · {statusLabel[o.status]} · {viaLocalink(o) ? "via Localink" : paymentTitle(o.payment)}</span>
+                            <span className="block truncate text-xs text-ink-3">{dayMonthYear(o.createdAt)} · {statusLabel[o.status]} · {viaLocalink(o) ? "via LocalinkGo" : paymentTitle(o.payment)}</span>
                           </span>
                           <span className="font-semibold">{usd(orderShare(o))}</span>
                         </Link>
@@ -155,7 +155,7 @@ export default function RevenuePage() {
           </Card>
         ))}
       </div>
-      <p className="group mt-6 flex items-center justify-center gap-1.5 text-center text-xs text-ink-3"><Icon name="cash" className="size-4" /> Your share of each sale. Sales paid through Localink are held for you: see <Link href="/merchant/earnings" className="font-semibold text-brand hover:underline">Earnings</Link>.</p>
+      <p className="group mt-6 flex items-center justify-center gap-1.5 text-center text-xs text-ink-3"><Icon name="cash" className="size-4" /> Your share of each sale. Sales paid through LocalinkGo are held for you: see <Link href="/merchant/earnings" className="font-semibold text-brand hover:underline">Earnings</Link>.</p>
     </div>
   );
 }

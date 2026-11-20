@@ -35,7 +35,7 @@ export default function ShopReviewsPage() {
 
   return (
     <>
-      <PageHeader title="Reviews" subtitle={`What buyers say about ${shop.name}. Reviews are public on Localink.`} />
+      <PageHeader title="Reviews" subtitle={`What buyers say about ${shop.name}. Reviews are public on LocalinkGo.`} />
       {error && <p className="mb-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-800">{error}</p>}
       {reviews == null && !error ? (
         <div className="flex justify-center py-20"><Spinner /></div>
@@ -56,7 +56,7 @@ export default function ShopReviewsPage() {
             {list.length === 0 ? (
               <Empty
                 title={all.length ? "Nothing in this view" : "No reviews yet"}
-                message={all.length ? "Try another filter." : "Buyers can rate your shop in the Localink app, for example after they collect an order."}
+                message={all.length ? "Try another filter." : "Buyers can rate your shop in the LocalinkGo app, for example after they collect an order."}
               />
             ) : (
               <div className="stagger space-y-3">
@@ -68,11 +68,11 @@ export default function ShopReviewsPage() {
             <RatingSummary reviews={all} title={shop.name} />
             <p className="px-1 text-xs text-ink-3">
               Every signed-in buyer can leave one review per shop and change it later. <b>Ordered here</b> marks people who collected an order at your shop.
-              Something abusive? Contact Localink support and an admin can hide it.
+              Something abusive? Contact LocalinkGo support and an admin can hide it.
             </p>
             <Link href="/merchant/feedback" className="group block rounded-2xl border border-line bg-white p-4 text-sm transition hover:bg-surface">
-              <span className="font-semibold">How is Localink working for you?</span>
-              <span className="mt-0.5 block text-ink-3">Rate and review Localink itself ›</span>
+              <span className="font-semibold">How is LocalinkGo working for you?</span>
+              <span className="mt-0.5 block text-ink-3">Rate and review LocalinkGo itself ›</span>
             </Link>
           </div>
         </div>

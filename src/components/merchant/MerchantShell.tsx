@@ -45,7 +45,7 @@ function ShopSwitcher({ onDone }: { onDone: () => void }) {
         <ShopThumb src={shop.bannerAsset} name={shop.name} />
         <span className="min-w-0 flex-1">
           <span className="block truncate text-sm font-bold">{shop.name}</span>
-          <span className="block truncate text-xs text-ink-3">{shop.suspended ? "Paused by Localink" : shop.verified ? "Verified" : "Awaiting verification"}</span>
+          <span className="block truncate text-xs text-ink-3">{shop.suspended ? "Paused by LocalinkGo" : shop.verified ? "Verified" : "Awaiting verification"}</span>
         </span>
         <Icon name="chevronsUpDown" className="size-4 text-ink-3" strokeWidth={2} />
       </button>
@@ -86,7 +86,7 @@ export function MerchantShell({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
 
   const awaiting = shopOrders.filter((o) => o.status === "readyForPickup").length;
-  // Proof of payments to the shop's own accounts; Localink checks payments made to it.
+  // Proof of payments to the shop's own accounts; LocalinkGo checks payments made to it.
   const proofs = shopOrders.filter((o) => o.payTo !== "localink" && o.paymentStatus === "proofSent").length;
   const nav: { href: string; label: string; icon: IconName; count?: number; alert?: boolean }[] = [
     { href: "/merchant", label: "Overview", icon: "dashboard" },
@@ -102,7 +102,7 @@ export function MerchantShell({ children }: { children: ReactNode }) {
     { href: "/merchant/shop", label: "Shop settings", icon: "store" },
     { href: "/merchant/notifications", label: "Notifications", icon: "bell", count: unread, alert: unread > 0 },
     { href: "/merchant/profile", label: "Profile", icon: "user" },
-    { href: "/merchant/feedback", label: "Rate Localink", icon: "sparkles" },
+    { href: "/merchant/feedback", label: "Rate LocalinkGo", icon: "sparkles" },
   ];
   const isActive = (href: string) =>
     href === "/merchant" ? path === "/merchant" : href === "/merchant/shop" ? path === "/merchant/shop" : path.startsWith(href);

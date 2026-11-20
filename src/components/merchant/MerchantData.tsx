@@ -35,11 +35,11 @@ interface MerchantData {
   error: string | null;
   failedScans: FailedScan[];
   addFailedScan: (code: string, reason: string) => void;
-  /** This account's review of Localink: null when they have not written one, undefined while loading. */
+  /** This account's review of LocalinkGo: null when they have not written one, undefined while loading. */
   appReview: ReviewDoc | null | undefined;
-  /** Localink's accounts, prices and whether online payment is on. */
+  /** LocalinkGo's accounts, prices and whether online payment is on. */
   config: PaymentsConfig;
-  /** What Localink holds for the active shop (empty until it has earned something). */
+  /** What LocalinkGo holds for the active shop (empty until it has earned something). */
   wallet: WalletDoc | null;
 }
 
@@ -107,7 +107,7 @@ export function MerchantDataProvider({ user, children }: { user: User; children:
   const phoneDigits = profile?.phoneDigits ?? "";
   useEffect(() => watchNotifications(user.uid, phoneDigits, setNotifications, () => {}), [user.uid, phoneDigits]);
 
-  // Shown as "Rate Localink" until they have.
+  // Shown as "Rate LocalinkGo" until they have.
   useEffect(() => watchMyAppReview(user.uid, setAppReview, () => setAppReview(null)), [user.uid]);
 
   useEffect(() => watchPaymentsConfig(setConfig, () => {}), []);
@@ -137,7 +137,7 @@ export function MerchantDataProvider({ user, children }: { user: User; children:
   const unread = notifications.filter((n) => n.unread).length;
 
   useEffect(() => {
-    document.title = `${unread ? `(${unread}) ` : ""}Localink Merchant`;
+    document.title = `${unread ? `(${unread}) ` : ""}LocalinkGo Merchant`;
   }, [unread]);
 
   if (profileError) {
@@ -159,7 +159,7 @@ export function MerchantDataProvider({ user, children }: { user: User; children:
     return (
       <Gate>
         <h1 className="text-xl font-bold">Account suspended</h1>
-        <p className="mt-2 text-sm text-ink-2">This account has been suspended. Contact Localink support if you think this is a mistake.</p>
+        <p className="mt-2 text-sm text-ink-2">This account has been suspended. Contact LocalinkGo support if you think this is a mistake.</p>
         <Button variant="secondary" className="mt-5 w-full" onClick={signOut}>Sign out</Button>
       </Gate>
     );

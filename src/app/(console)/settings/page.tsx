@@ -27,9 +27,9 @@ function toLimitsForm(l: PaymentsConfig["limits"]): LimitsForm {
 }
 
 /**
- * Localink's own settings (`config/payments`): the accounts buyers (and shops
+ * LocalinkGo's own settings (`config/payments`): the accounts buyers (and shops
  * paying for a plan) pay into, the online gateway, the plan prices and
- * service fees, and Localink's discount for big baskets. Plus the secret keys
+ * service fees, and LocalinkGo's discount for big baskets. Plus the secret keys
  * the Cloud Functions use (Paynow, Didit), which nobody can read back here.
  */
 export default function SettingsPage() {
@@ -112,7 +112,7 @@ export default function SettingsPage() {
     if (invalid) return toast("Check the highlighted fields.", "error");
     if (!c.options.length && !c.onlineEnabled) {
       const ok = await confirm({
-        title: "No way to pay Localink?",
+        title: "No way to pay LocalinkGo?",
         message: "Without an account or online payments, buyers of Basic and Standard shops cannot pay, so those shops cannot take orders.",
         confirm: "Save anyway",
         danger: true,
@@ -133,7 +133,7 @@ export default function SettingsPage() {
           ...c.rewards,
           tiers: tiers.map((t) => ({ minSpend: num(t.minSpend), amount: num(t.amount), percent: num(t.percent) })).sort((a, b) => a.minSpend - b.minSpend),
           capPer30Days: num(cap),
-          label: c.rewards.label.trim() || "Localink bulk discount",
+          label: c.rewards.label.trim() || "LocalinkGo bulk discount",
         },
       });
       setTouched(false);
@@ -172,11 +172,11 @@ export default function SettingsPage() {
 
   return (
     <div className="mx-auto max-w-3xl">
-      <PageHeader title="Payment settings" subtitle="How buyers pay Localink, what Localink charges, and Localink's own discounts." />
+      <PageHeader title="Payment settings" subtitle="How buyers pay LocalinkGo, what LocalinkGo charges, and LocalinkGo's own discounts." />
       {!loaded && <p className="text-sm text-ink-3">Loading…</p>}
 
       <Card className="p-5">
-        <h2 className="text-lg font-bold">Localink&apos;s accounts</h2>
+        <h2 className="text-lg font-bold">LocalinkGo&apos;s accounts</h2>
         <p className="mt-0.5 text-sm text-ink-3">Buyers at Basic and Standard shops pay into these and upload proof; you confirm it under Payments to check. Shops can pay for their plan into them too.</p>
         <div className="mt-4 space-y-2">
           {c.options.map((p) => (
@@ -189,7 +189,7 @@ export default function SettingsPage() {
               <button type="button" className="text-sm font-semibold text-red-700 hover:underline" onClick={() => edit({ options: c.options.filter((x) => x.id !== p.id) })}>Remove</button>
             </div>
           ))}
-          {!c.options.length && <p className="rounded-2xl bg-amber-50 px-4 py-3 text-sm text-amber-900">No accounts yet. Add at least one (e.g. Localink&apos;s EcoCash merchant number) so Basic shops can take orders.</p>}
+          {!c.options.length && <p className="rounded-2xl bg-amber-50 px-4 py-3 text-sm text-amber-900">No accounts yet. Add at least one (e.g. LocalinkGo&apos;s EcoCash merchant number) so Basic shops can take orders.</p>}
         </div>
         <Button variant="secondary" className="mt-3" onClick={() => setEditing("new")}>+ Add account</Button>
       </Card>
@@ -243,10 +243,10 @@ export default function SettingsPage() {
 
       <Card className="mt-4 space-y-4 p-5">
         <div>
-          <h2 className="text-lg font-bold">Localink discount for big baskets</h2>
+          <h2 className="text-lg font-bold">LocalinkGo discount for big baskets</h2>
           <p className="mt-0.5 text-sm text-ink-3">
-            Localink&apos;s own promotion for customers who buy a lot, separate from shops&apos; discounts. The buyer pays less; the shop is still paid its full price and
-            Localink pays the difference (shown on each payout). Only on orders paid through Localink.
+            LocalinkGo&apos;s own promotion for customers who buy a lot, separate from shops&apos; discounts. The buyer pays less; the shop is still paid its full price and
+            LocalinkGo pays the difference (shown on each payout). Only on orders paid through LocalinkGo.
           </p>
         </div>
         <Switch checked={r.enabled} onChange={(enabled) => setRewards({ enabled })} label="Offer the discount" description="Buyers see it at checkout, and how much more to add to reach the next step." />
@@ -284,7 +284,7 @@ export default function SettingsPage() {
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
           <Input label="Most one customer gets in 30 days" prefix="$" inputMode="decimal" value={cap} onChange={(e) => { setTouched(true); setCap(e.target.value); }} error={capErr} hint="Leave empty for no limit." />
-          <Input label="What buyers see" value={r.label} onChange={(e) => setRewards({ label: e.target.value })} placeholder="Localink bulk discount" maxLength={40} />
+          <Input label="What buyers see" value={r.label} onChange={(e) => setRewards({ label: e.target.value })} placeholder="LocalinkGo bulk discount" maxLength={40} />
         </div>
       </Card>
 
@@ -338,7 +338,7 @@ export default function SettingsPage() {
       {editing && (
         <PaymentForm
           existing={editing === "new" ? null : editing}
-          defaultAccountName="Localink"
+          defaultAccountName="LocalinkGo"
           onClose={() => setEditing(null)}
           onSave={(p) => {
             edit({ options: c.options.some((x) => x.id === p.id) ? c.options.map((x) => (x.id === p.id ? p : x)) : [...c.options, p] });

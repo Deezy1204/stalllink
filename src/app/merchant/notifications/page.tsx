@@ -9,7 +9,7 @@ import { ago } from "@/lib/catalog";
 import { markNotificationsRead } from "@/lib/merchant";
 import type { NotificationDoc } from "@/lib/types";
 
-/** The app's icon keys (Localink serialization.dart) as console icons. */
+/** The app's icon keys (LocalinkGo serialization.dart) as console icons. */
 const ICONS: Record<string, IconName> = {
   volunteer_activism: "gift",
   confirmation_number: "ticket",
@@ -39,7 +39,7 @@ export default function NotificationsPage() {
     if (n.unread) read([n.id]);
     if (!n.orderId) return;
     if (orders.some((o) => o.id === n.orderId)) router.push(`/merchant/orders/${n.orderId}`);
-    else toast("That order is one you sent or receive. Open it in the Localink app.");
+    else toast("That order is one you sent or receive. Open it in the LocalinkGo app.");
   }
 
   return (

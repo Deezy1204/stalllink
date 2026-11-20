@@ -1,5 +1,5 @@
-// Localink's money on the web, the same way the app does it
-// (Localink/lib/data/firebase_repository.dart): balances, plans and payouts
+// LocalinkGo's money on the web, the same way the app does it
+// (LocalinkGo/lib/data/firebase_repository.dart): balances, plans and payouts
 // are only changed by the Cloud Functions (functions/src/payments.ts). Pages
 // read them, and ask for changes with request documents.
 
@@ -40,7 +40,7 @@ import {
 
 export const PRO_DAYS = 30;
 export const MIN_PAYOUT = 1;
-export const DEFAULT_REWARDS: RewardsConfig = { enabled: false, basis: "order", tiers: [], capPer30Days: 0, label: "Localink bulk discount" };
+export const DEFAULT_REWARDS: RewardsConfig = { enabled: false, basis: "order", tiers: [], capPer30Days: 0, label: "LocalinkGo bulk discount" };
 export const DEFAULT_CONFIG: PaymentsConfig = {
   options: [],
   onlineEnabled: false,
@@ -85,7 +85,7 @@ function toRewards(v: unknown): RewardsConfig {
       .filter((t) => t.minSpend > 0 && (t.amount > 0 || t.percent > 0))
       .sort((a, b) => a.minSpend - b.minSpend),
     capPer30Days: clamp(n(r.capPer30Days), 0, 100000),
-    label: (typeof r.label === "string" && r.label.trim()) || "Localink bulk discount",
+    label: (typeof r.label === "string" && r.label.trim()) || "LocalinkGo bulk discount",
   };
 }
 
@@ -179,14 +179,14 @@ async function walletRequest(data: Record<string, unknown>): Promise<string | nu
   return new Promise((resolve) => {
     const timer = setTimeout(() => {
       stop();
-      resolve("Localink has not answered yet. It goes through as soon as it is processed; check again in a minute.");
+      resolve("LocalinkGo has not answered yet. It goes through as soon as it is processed; check again in a minute.");
     }, 40_000);
     const stop = onSnapshot(r, (s) => {
       const d = s.data();
       if (!d || d.status === "pending") return;
       clearTimeout(timer);
       stop();
-      resolve(d.status === "done" ? null : String(d.error ?? "Localink could not do that."));
+      resolve(d.status === "done" ? null : String(d.error ?? "LocalinkGo could not do that."));
     });
   });
 }
@@ -214,7 +214,7 @@ export async function startOnlinePlanPayment(uid: string, shopId: string, plan: 
   });
 }
 
-/** Proof of paying Localink for a plan by transfer; an admin approves it. */
+/** Proof of paying LocalinkGo for a plan by transfer; an admin approves it. */
 export async function submitPlanPayment(uid: string, shop: ShopDoc, plan: Plan, months: number, amount: number, payment: PaymentOption, file: File, reference: string, payerName: string) {
   if (file.size >= 8 * 1024 * 1024) throw new Error("That file is too large (8 MB at most).");
   const target = doc(collection(db(), "planPayments"));
@@ -253,7 +253,7 @@ export const watchAllPlanPayments = (on: (v: PlanPaymentDoc[]) => void, onError:
     onError,
   );
 
-/** The money for a Localink order arrived: the functions book the shop's earnings and tell the buyer and shop. */
+/** The money for a LocalinkGo order arrived: the functions book the shop's earnings and tell the buyer and shop. */
 export const confirmLocalinkPayment = (o: OrderDoc) => updateDoc(doc(db(), "orders", o.id), { paymentStatus: "confirmed", paidVia: "transfer", paidAt: Date.now() });
 
 /** The proof did not match a payment: back to "awaiting proof" so the buyer can send it again, and they are told why. */
@@ -262,7 +262,7 @@ export async function rejectLocalinkProof(adminUid: string, o: OrderDoc, reason:
   if (!o.senderId) return;
   await addDoc(collection(db(), "notifications"), {
     title: `Payment for #${o.id} not found`,
-    body: `Localink could not match your proof${reason ? `: ${reason}` : ""}. Check the amount and reference, and send it again.`,
+    body: `LocalinkGo could not match your proof${reason ? `: ${reason}` : ""}. Check the amount and reference, and send it again.`,
     time: Date.now(),
     icon: "receipt_long",
     color: "neutral",
@@ -323,7 +323,7 @@ async function kycRequest(uid: string, action: "start" | "check"): Promise<{ url
   return new Promise((resolve) => {
     const timer = setTimeout(() => {
       stop();
-      resolve({ error: "Localink did not answer. Check your connection and try again." });
+      resolve({ error: "LocalinkGo did not answer. Check your connection and try again." });
     }, 40_000);
     const stop = onSnapshot(r, (s) => {
       const d = s.data();
@@ -338,5 +338,5 @@ async function kycRequest(uid: string, action: "start" | "check"): Promise<{ url
 /** Starts (or continues) the identity check and returns Didit's page. */
 export const startKyc = (uid: string) => kycRequest(uid, "start");
 
-/** Asks Localink to fetch the latest answer from Didit. */
+/** Asks LocalinkGo to fetch the latest answer from Didit. */
 export const recheckKyc = (uid: string) => kycRequest(uid, "check");

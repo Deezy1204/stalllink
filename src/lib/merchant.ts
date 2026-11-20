@@ -1,5 +1,5 @@
 // Everything a merchant does, written to Firestore the way the mobile app
-// does it (Localink/lib/state/app_store.dart), so the app and the web stay
+// does it (LocalinkGo/lib/state/app_store.dart), so the app and the web stay
 // interchangeable: notifications carry `fromUser` for the push function, and
 // shop writes never touch the admin-only `verified` / `suspended` flags.
 
@@ -78,7 +78,7 @@ export async function ensureProfile(u: User): Promise<UserDoc> {
 export const watchProfile = (uid: string, on: (u: UserDoc) => void, onError: (e: Error) => void): Unsubscribe =>
   onSnapshot(doc(db(), "users", uid), (s) => s.exists() && on(toProfile(uid, s.data())), onError);
 
-/** The public part of a profile that people search reads (Localink serialization.dart directoryToMap). */
+/** The public part of a profile that people search reads (LocalinkGo serialization.dart directoryToMap). */
 async function syncDirectory(uid: string, p: { name: string; phone: string; city: string; findable: boolean }) {
   const d = doc(db(), "directory", uid);
   if (!p.findable || !p.name.trim() || !digitsOnly(p.phone)) return deleteDoc(d);
@@ -181,7 +181,7 @@ async function notify(
  * Functions keep it); the rest is merged.
  */
 export async function saveShop(uid: string, shop: ShopDoc, isNew: boolean) {
-  // The plan, trial and owner check too: only Localink sets them.
+  // The plan, trial and owner check too: only LocalinkGo sets them.
   const {
     products: _products,
     verified: _verified,
@@ -242,10 +242,10 @@ export const savePromo = (shopId: string, promo: ShopPromo | null) => updateDoc(
 
 /**
  * The shop has checked the buyer's proof (or the money arrived). Tells the
- * buyer. Only for payments to the shop itself: Localink confirms payments made to it.
+ * buyer. Only for payments to the shop itself: LocalinkGo confirms payments made to it.
  */
 export async function confirmPayment(uid: string, o: OrderDoc, shopName: string) {
-  if (o.payTo === "localink") throw new Error("Localink confirms payments made through Localink.");
+  if (o.payTo === "localink") throw new Error("LocalinkGo confirms payments made through LocalinkGo.");
   await updateDoc(doc(db(), "orders", o.id), { paymentStatus: "confirmed" });
   if (o.senderId) {
     await notify(
@@ -258,8 +258,8 @@ export async function confirmPayment(uid: string, o: OrderDoc, shopName: string)
 
 /** The groceries were handed over. Tells the buyer and the recipient. */
 export async function releaseOrder(uid: string, o: OrderDoc, shopName: string, handoverUrl: string | null) {
-  // Handing over means a shop-paid order is paid; a Localink-paid one must
-  // already be confirmed by Localink (the rules refuse it otherwise).
+  // Handing over means a shop-paid order is paid; a LocalinkGo-paid one must
+  // already be confirmed by LocalinkGo (the rules refuse it otherwise).
   await updateDoc(doc(db(), "orders", o.id), {
     handoverUrl,
     status: "collected",

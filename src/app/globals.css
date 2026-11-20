@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* Localink palette, from the logo (matches the mobile app's AppColors):
+/* LocalinkGo palette, from the logo (matches the mobile app's AppColors):
    teal for actions, the pin's dark green for text, its orange for highlights. */
 @theme {
   --color-brand: #0a7a63; /* logo teal, a shade darker so white text on it passes AA */

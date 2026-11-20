@@ -36,7 +36,7 @@ function message(e: unknown): string {
       return "This sign-in method is not enabled in the Firebase console.";
     case "auth/unauthorized-domain":
       // Google sign-in only works on addresses listed in Firebase.
-      return `Google sign-in is not allowed on ${typeof window === "undefined" ? "this address" : window.location.hostname} yet. A Localink admin must add it in the Firebase console (Authentication → Settings → Authorized domains). Meanwhile, sign in with your email and password.`;
+      return `Google sign-in is not allowed on ${typeof window === "undefined" ? "this address" : window.location.hostname} yet. A LocalinkGo admin must add it in the Firebase console (Authentication → Settings → Authorized domains). Meanwhile, sign in with your email and password.`;
     case "auth/popup-blocked":
       return "The browser blocked the Google sign-in window. Allow pop-ups for this site and try again.";
     default:
@@ -84,7 +84,7 @@ function Login() {
     e.preventDefault();
     if (mode === "signin") return run(() => signInWithEmailAndPassword(auth(), email.trim(), password));
     if (!name.trim()) return setError("Enter your full name.");
-    if (digitsOnly(phone).length < 7) return setError("Enter a valid phone number (buyers and Localink use it to reach you).");
+    if (digitsOnly(phone).length < 7) return setError("Enter a valid phone number (buyers and LocalinkGo use it to reach you).");
     if (password.length < 8) return setError("Choose a password of at least 8 characters.");
     return run(async () => {
       const cred = await createUserWithEmailAndPassword(auth(), email.trim(), password);
@@ -98,7 +98,7 @@ function Login() {
     <main className="flex min-h-screen items-center justify-center bg-gradient-to-b from-surface to-brand-50 px-4 py-10">
       <Card className="w-full max-w-md animate-rise p-7">
         <div className="mb-6 flex flex-col items-center text-center">
-          <FullLogo className="h-32" />
+          <FullLogo />
           <p className="mt-3 text-xs font-semibold uppercase tracking-widest text-ink-3">Merchant & admin console</p>
         </div>
 
@@ -111,7 +111,7 @@ function Login() {
         </div>
 
         <p className="mb-5 text-sm text-ink-3">
-          {mode === "signin" ? "Use the same account you use in the Localink app." : "Open a merchant account to run your shop from the web or the app."}
+          {mode === "signin" ? "Use the same account you use in the LocalinkGo app." : "Open a merchant account to run your shop from the web or the app."}
         </p>
         <form onSubmit={submit} className="space-y-4">
           {mode === "signup" && (

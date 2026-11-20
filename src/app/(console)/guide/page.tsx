@@ -4,9 +4,9 @@ import type { ReactNode } from "react";
 
 import { Icon, type IconName } from "@/components/icons";
 
-// "How Localink works": the whole system from sign-up to collection, for
+// "How LocalinkGo works": the whole system from sign-up to collection, for
 // anyone new to it. The phone pictures are rendered from the app with its
-// demo data (Localink/test/docs_screenshots_test.dart).
+// demo data (LocalinkGo/test/docs_screenshots_test.dart).
 
 const sections = [
   { id: "idea", title: "The idea" },
@@ -87,7 +87,7 @@ const people: { icon: IconName; name: string; text: string }[] = [
   { icon: "globe", name: "Buyer (sender)", text: "Usually lives abroad (UK, South Africa, US…). Chooses a shop near the family, pays the shop directly, uploads proof of payment. Uses the app in General mode." },
   { icon: "home", name: "Recipient", text: "Family or a friend at home who collects the groceries. Gets a QR pickup pass and a PIN. Does not need the app: the buyer can send the pass by WhatsApp or as a PDF." },
   { icon: "store", name: "Merchant (shop)", text: "Runs one or more shops. Publishes payment details and products, confirms payments, hands groceries over. Uses the app in Merchant mode or the web merchant console." },
-  { icon: "shieldCheck", name: "Admin (Localink)", text: "Verifies and, if needed, pauses shops, suspends accounts, watches orders and payments, follows up shops that buyers recommend. Uses this console (or the app's Admin console)." },
+  { icon: "shieldCheck", name: "Admin (LocalinkGo)", text: "Verifies and, if needed, pauses shops, suspends accounts, watches orders and payments, follows up shops that buyers recommend. Uses this console (or the app's Admin console)." },
 ];
 
 const timeline: { who: string; what: ReactNode; where: string; result: ReactNode; told: string }[] = [
@@ -95,7 +95,7 @@ const timeline: { who: string; what: ReactNode; where: string; result: ReactNode
   { who: "Admin", what: "Checks the shop and verifies it", where: "Admin console → Shops", result: <Status tone="green">Verified badge</Status>, told: "Shop owner: “Your shop is verified”" },
   { who: "Merchant", what: "Lists products with sizes, prices, stock and photos", where: "App or web", result: "Buyers see them straight away", told: "—" },
   { who: "Buyer", what: "Fills a basket at one shop and checks out: recipient, collection point or delivery, payment method", where: "App", result: <><Status tone="green">Ready for pickup</Status> <Status tone="red">Awaiting payment proof</Status> + voucher code & PIN</>, told: "Buyer, recipient (by phone and account) and the shop" },
-  { who: "Buyer", what: "Pays the shop the exact amount with the shop’s own details, using the order number as reference", where: "Outside Localink (EcoCash, bank…)", result: "Money is with the shop", told: "—" },
+  { who: "Buyer", what: "Pays the shop the exact amount with the shop’s own details, using the order number as reference", where: "Outside LocalinkGo (EcoCash, bank…)", result: "Money is with the shop", told: "—" },
   { who: "Buyer", what: "Uploads proof: a photo or PDF, the transaction reference and the payer’s name", where: "App", result: <Status tone="amber">Payment proof sent</Status>, told: "Shop: “Payment proof for #…”" },
   { who: "Merchant", what: "Checks the money arrived and taps Confirm payment", where: "App or web", result: <Status tone="green">Payment confirmed</Status>, told: "Buyer: “Payment confirmed”" },
   { who: "Recipient", what: "Opens the pickup pass; may change the collection point to a branch", where: "App, or the shared pass", result: "Collection point saved on the order", told: "Shop (and buyer): “Collection point set”" },
@@ -121,7 +121,7 @@ export default function GuidePage() {
       <article className="min-w-0">
         <header className="mb-10 rounded-3xl bg-gradient-to-br from-ink to-brand p-7 text-white shadow-lg shadow-brand/20">
           <p className="text-xs font-bold uppercase tracking-widest text-white/70">Guide</p>
-          <h1 className="mt-1 text-3xl font-extrabold tracking-tight">How Localink works</h1>
+          <h1 className="mt-1 text-3xl font-extrabold tracking-tight">How LocalinkGo works</h1>
           <p className="mt-2 max-w-2xl text-white/85">
             From creating an account to the moment the groceries are handed over: who does what, when, and what everyone sees. The phone pictures come from the app, filled with its demo data.
           </p>
@@ -130,7 +130,7 @@ export default function GuidePage() {
         <div className="space-y-10">
           <Section id="idea" n={1} title="The idea in one minute">
             <p>
-              People abroad want to put food on the table at home without paying remittance fees or trusting someone to do the shopping. With Localink a buyer picks a real shop near the family, chooses the groceries,
+              People abroad want to put food on the table at home without paying remittance fees or trusting someone to do the shopping. With LocalinkGo a buyer picks a real shop near the family, chooses the groceries,
               and <b>pays the shop directly</b> (EcoCash, InnBucks, OneMoney, Mukuru, a bank transfer…). The family member collects the groceries with a <b>QR voucher</b>.
             </p>
             <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-6">
@@ -142,7 +142,7 @@ export default function GuidePage() {
               ))}
             </div>
             <Note>
-              <b>Localink never holds money.</b> It connects the three people, keeps the order, the proof of payment and the handover on record, and notifies everyone at each step. The shop is paid by the buyer, outside the app,
+              <b>LocalinkGo never holds money.</b> It connects the three people, keeps the order, the proof of payment and the handover on record, and notifies everyone at each step. The shop is paid by the buyer, outside the app,
               before it hands anything over.
             </Note>
           </Section>
@@ -173,7 +173,7 @@ export default function GuidePage() {
               items={[
                 <>Sign up in the app with name, email, <b>phone number</b> and password (or Google). Merchants can also open an account on the web at <Link className="font-semibold text-brand hover:underline" href="/merchant">/merchant</Link>.</>,
                 <>The <b>phone number matters</b>: orders sent to someone are matched to their account by it, so a recipient with the app sees the pass under Orders → Received.</>,
-                <>People search: when a buyer chooses a recipient they can search other Localink users by name or phone. Results show only the city and the last 4 digits. Anyone can switch off <i>Let people find me</i> in Profile.</>,
+                <>People search: when a buyer chooses a recipient they can search other LocalinkGo users by name or phone. Results show only the city and the last 4 digits. Anyone can switch off <i>Let people find me</i> in Profile.</>,
                 <>Admins are ordinary accounts listed as admins. An admin adds another by email in <Link className="font-semibold text-brand hover:underline" href="/admins">Admins</Link>; someone without an account yet becomes admin when they first sign in with that email.</>,
                 <>A suspended account (Admin console → Users) cannot sign in to the app or the web.</>,
               ]}
@@ -233,7 +233,7 @@ export default function GuidePage() {
                 <>Pick the city where the family lives, then browse shops (list or map) or search for a product. <i>Check coverage</i> shows which areas have shops, including branches; buyers can recommend a missing shop (it appears in <Link className="font-semibold text-brand hover:underline" href="/requests">Shop requests</Link>).</>,
                 <>Shop cards say how many <b>branches</b> a shop has and in which areas. The shop page lists every place it can be collected from (main shop and branches) with the address, hours, a call button and directions, and a map of the pinned ones.</>,
                 <>Add items to the basket. A basket holds <b>one shop’s</b> products, because that shop is paid and collects for the whole order.</>,
-                <>At checkout choose <b>who collects</b>: <i>Someone else</i> (a saved recipient, a Localink user found by search, or new details typed in) or <i>Myself</i>.</>,
+                <>At checkout choose <b>who collects</b>: <i>Someone else</i> (a saved recipient, a LocalinkGo user found by search, or new details typed in) or <i>Myself</i>.</>,
                 <>Choose the <b>collection point</b> (main shop or a branch), or delivery if the shop offers it (its fee is added).</>,
                 <>Choose one of the shop’s <b>payment methods</b>, add a message if you like, and place the order.</>,
               ]}
@@ -252,7 +252,7 @@ export default function GuidePage() {
             </p>
             <Steps
               items={[
-                <>The payment screen shows the shop’s details for the chosen method, the amount and the order number to use as reference. The buyer pays from their own wallet or bank; Localink is not involved in the money.</>,
+                <>The payment screen shows the shop’s details for the chosen method, the amount and the order number to use as reference. The buyer pays from their own wallet or bank; LocalinkGo is not involved in the money.</>,
                 <>The buyer uploads <b>proof</b>: a screenshot, photo or PDF of the payment, plus the reference and the payer’s name. Payment becomes <Status tone="amber">Payment proof sent</Status> and the shop is notified. (“I’ll upload it later” is fine; the order waits.)</>,
                 <>The buyer follows everything under Orders → Sent, and can download or share the pass as a PDF, or send it to the recipient on WhatsApp.</>,
               ]}
@@ -265,7 +265,7 @@ export default function GuidePage() {
               <Phone src="notifications" caption="Notifications: unread count on the bell; tapping one opens the order" />
             </Phones>
             <p>
-              The recipient is notified the moment the order is placed: by account if the buyer picked them from Localink’s users, and by phone number. In the app the pass is under Orders → Received. It shows the QR code, the
+              The recipient is notified the moment the order is placed: by account if the buyer picked them from LocalinkGo’s users, and by phone number. In the app the pass is under Orders → Received. It shows the QR code, the
               PIN, the date it is valid until (5 days after ordering), the message from the buyer and the collection point, which the recipient can change to another branch (the shop is told).
             </p>
             <Note>Without the app the recipient can still collect: the buyer shares the pass (PDF or WhatsApp message with the code, PIN and a map link).</Note>
@@ -312,14 +312,14 @@ export default function GuidePage() {
           <Section id="reviews" n={12} title="Ratings & reviews" who="Everyone">
             <p>
               Reviews are <b>public</b>: anyone can read them, and each shows the author’s name, 1 to 5 stars, an optional comment and the date. A person writes <b>one review per shop</b> and{" "}
-              <b>one review of Localink</b>, and can edit or delete it at any time.
+              <b>one review of LocalinkGo</b>, and can edit or delete it at any time.
             </p>
             <Steps
               items={[
                 <>Buyers rate a shop in the app from its page (<i>Reviews → Write a review</i>), or straight from an order once it is collected. Shop owners cannot review their own shop.</>,
                 <>The shop’s average and number of reviews show on its page and in every shop list. The Cloud Functions recalculate them whenever a review changes, so nobody can edit a rating by hand.</>,
                 <>A review from someone who collected an order at that shop (as buyer or recipient) is marked <Status tone="green">Ordered here</Status>. The owner is notified of each new review.</>,
-                <>Everyone rates Localink itself: buyers in the app (<i>Profile → Rate Localink</i>), shop owners in the app or in the merchant console (<i>Rate Localink</i>). Each review says whether it came from a buyer or a shop owner.</>,
+                <>Everyone rates LocalinkGo itself: buyers in the app (<i>Profile → Rate LocalinkGo</i>), shop owners in the app or in the merchant console (<i>Rate LocalinkGo</i>). Each review says whether it came from a buyer or a shop owner.</>,
                 <>Merchants read their shop’s reviews under <i>Reviews</i> in the merchant console, or by tapping the rating on the app’s Overview.</>,
               ]}
             />
@@ -376,7 +376,7 @@ export default function GuidePage() {
                 </tbody>
               </table>
             </div>
-            <Note>To stop spam, a push is only sent between the people on that order (buyer, recipient, shop), or by Localink itself. Other notifications stay in-app.</Note>
+            <Note>To stop spam, a push is only sent between the people on that order (buyer, recipient, shop), or by LocalinkGo itself. Other notifications stay in-app.</Note>
           </Section>
 
           <Section id="admin" n={15} title="The admin console" who="Admin">
@@ -387,7 +387,7 @@ export default function GuidePage() {
                 ["Users", "/users", "Search accounts, suspend or restore them, make someone an admin."],
                 ["Orders", "/orders", "Every order with its payment status; open the buyer’s proof of payment."],
                 ["Shop requests", "/requests", "Shops buyers recommended; mark them contacted, onboarded or dismissed."],
-                ["Reviews", "/reviews", "Every review of a shop or of Localink; filter to low ratings, hide abusive reviews or delete them."],
+                ["Reviews", "/reviews", "Every review of a shop or of LocalinkGo; filter to low ratings, hide abusive reviews or delete them."],
                 ["Admins", "/admins", "Add admins by email (or invite an email that has no account yet), remove admins."],
               ].map(([t, href, d]) => (
                 <Link key={t} href={href} className="rounded-2xl border border-line bg-white p-4 transition hover:-translate-y-0.5 hover:shadow-md">
@@ -404,21 +404,21 @@ export default function GuidePage() {
               Everything a merchant does in the app’s Merchant mode can also be done at <Link className="font-semibold text-brand hover:underline" href="/merchant">/merchant</Link> on a computer or a phone browser: set up and edit shops
               (with a map to pin locations), see all of a shop’s locations on a map with the orders waiting at each, filter orders by collection point,
               list and edit products with sizes, bulk prices and photos, confirm payments, scan or type vouchers and hand orders over (webcam or phone camera), follow revenue and download
-              reports and receipts, read notifications and the shop’s reviews, rate and review Localink, and edit the profile. Any Localink account can sign in there; new merchants can create their account on the web.
+              reports and receipts, read notifications and the shop’s reviews, rate and review LocalinkGo, and edit the profile. Any LocalinkGo account can sign in there; new merchants can create their account on the web.
             </p>
             <p>The app and the web share the same live data: a product saved on the web appears in the app (and for buyers) at once, and the other way round.</p>
           </Section>
 
           <Section id="rules" n={17} title="Rules & limits">
             <ul className="list-disc space-y-1.5 pl-5">
-              <li>Localink never handles money; buyers pay shops directly with the details the shop published.</li>
+              <li>LocalinkGo never handles money; buyers pay shops directly with the details the shop published.</li>
               <li>A basket holds one shop’s products. Prices are in USD; buyers can view them in Rands at the shop’s own rate.</li>
               <li>Only the shop (or an admin) can confirm a payment, and handover needs a confirmed payment and every item ticked.</li>
               <li>Only admins can verify, pause or delete shops; merchants cannot verify their own.</li>
               <li>Orders are never deleted. Who an order belongs to (buyer, shop, recipient phone) cannot be changed after it is placed.</li>
               <li>An order, and the proof of payment on it, can be opened only by the people on that order (buyer, recipient, shop) and admins. Photos and proofs are limited to 8 MB.</li>
               <li>Vouchers show a “valid until” date 5 days after ordering.</li>
-              <li>One review per person per shop, and one of Localink. Comments are limited to 1,000 characters. Owners cannot review their own shop or change its rating.</li>
+              <li>One review per person per shop, and one of LocalinkGo. Comments are limited to 1,000 characters. Owners cannot review their own shop or change its rating.</li>
             </ul>
           </Section>
 
@@ -433,7 +433,7 @@ export default function GuidePage() {
                 (+263…) would fix it.
               </Note>
               <Note tone="warn">
-                <b>How Localink makes money is not decided.</b> Options include a monthly fee for merchants, a commission per order paid by the shop, or a small service fee paid by the buyer. Nothing is charged today.
+                <b>How LocalinkGo makes money is not decided.</b> Options include a monthly fee for merchants, a commission per order paid by the shop, or a small service fee paid by the buyer. Nothing is charged today.
               </Note>
               <Note tone="warn">
                 <b>Vouchers do not expire on their own,</b> and there is no way to cancel or refund an order yet. The “valid until” date is shown, but a code still works after it. Decide what should happen to unpaid or

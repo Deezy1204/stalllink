@@ -98,7 +98,7 @@ export const setUserSuspended = (uid: string, suspended: boolean) => setDoc(doc(
 
 export const setNominationStatus = (id: string, status: NominationDoc["status"]) => updateDoc(doc(db(), "shopNominations", id), { status });
 
-/** Which collection a review lives in: a shop's (`shopReviews`) or Localink's (`appReviews`). */
+/** Which collection a review lives in: a shop's (`shopReviews`) or LocalinkGo's (`appReviews`). */
 const reviewCollection = (r: ReviewDoc) => (r.shopId ? "shopReviews" : "appReviews");
 
 /** Hidden reviews leave every public list and rating; their author still sees them. */

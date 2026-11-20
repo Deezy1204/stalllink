@@ -157,7 +157,7 @@ export default function PlanPage() {
           checked={wallet?.autoRenew !== false}
           onChange={(autoRenew) => saveWalletSettings(user.uid, shop.id, { autoRenew }).catch((e: Error) => toast(`Could not save: ${e.message}`, "error"))}
           label="Renew from earnings"
-          description={`When a paid plan runs out, Localink takes the next month from this shop's earnings if there is enough (${usd(wallet?.balance ?? 0)} now).`}
+          description={`When a paid plan runs out, LocalinkGo takes the next month from this shop's earnings if there is enough (${usd(wallet?.balance ?? 0)} now).`}
         />
       </Card>
 
@@ -170,7 +170,7 @@ export default function PlanPage() {
               return (
                 <div key={h.id} className="flex items-center gap-3 px-4 py-3 text-sm">
                   <span className="flex-1">{PLAN_LABEL[hp]} · {usd(h.amount)} · {h.months} month{h.months === 1 ? "" : "s"} · {shortDate(h.createdAt)}{h.note ? ` · ${h.note}` : ""}</span>
-                  <Badge tone={h.status === "approved" ? "success" : h.status === "rejected" ? "danger" : "warning"}>{h.status === "approved" ? `${PLAN_LABEL[hp]} switched on` : h.status === "rejected" ? "Not accepted" : "Localink is checking"}</Badge>
+                  <Badge tone={h.status === "approved" ? "success" : h.status === "rejected" ? "danger" : "warning"}>{h.status === "approved" ? `${PLAN_LABEL[hp]} switched on` : h.status === "rejected" ? "Not accepted" : "LocalinkGo is checking"}</Badge>
                 </div>
               );
             })}
@@ -183,7 +183,7 @@ export default function PlanPage() {
   );
 }
 
-/** Buys or renews [plan]: from the shop's earnings, online, or by transfer to Localink with proof. */
+/** Buys or renews [plan]: from the shop's earnings, online, or by transfer to LocalinkGo with proof. */
 function BuyPlan({ plan, onClose }: { plan: Plan; onClose: () => void }) {
   const { shop, user, config, wallet, profile } = useMerchant();
   const toast = useToast();
@@ -221,7 +221,7 @@ function BuyPlan({ plan, onClose }: { plan: Plan; onClose: () => void }) {
         setTried(true);
         if (!file || !reference.trim() || !payer.trim() || !transfer) return;
         await submitPlanPayment(user.uid, shop!, plan, months, price, transfer, file, reference.trim(), payer.trim());
-        toast(`Proof sent. Localink switches ${PLAN_LABEL[plan]} on once it has checked your payment.`);
+        toast(`Proof sent. LocalinkGo switches ${PLAN_LABEL[plan]} on once it has checked your payment.`);
       }
       onClose();
     } catch (e) {
@@ -269,7 +269,7 @@ function BuyPlan({ plan, onClose }: { plan: Plan; onClose: () => void }) {
       </div>
       {transfer && (
         <div className="mt-4 space-y-3 rounded-2xl bg-surface p-4">
-          <p className="text-sm font-bold">Send {usd(price)} to Localink</p>
+          <p className="text-sm font-bold">Send {usd(price)} to LocalinkGo</p>
           <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
             {transfer.accountNumber && (<><dt className="text-ink-3">Pay to</dt><dd className="font-semibold">{transfer.accountNumber}</dd></>)}
             {transfer.accountName && (<><dt className="text-ink-3">Account name</dt><dd>{transfer.accountName}</dd></>)}

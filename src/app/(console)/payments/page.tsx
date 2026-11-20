@@ -15,9 +15,9 @@ const planOfPayment = (p: PlanPaymentDoc) => PLAN_LABEL[isPaidPlan(p.plan) ? p.p
 type Tab = "orders" | "pro" | "waiting";
 
 /**
- * Money sent to Localink's own accounts by transfer: buyers paying for
- * orders at Basic shops (or choosing Localink at Pro shops), and shops paying
- * for Pro. Check each against Localink's statements, then confirm it.
+ * Money sent to LocalinkGo's own accounts by transfer: buyers paying for
+ * orders at Basic shops (or choosing LocalinkGo at Pro shops), and shops paying
+ * for Pro. Check each against LocalinkGo's statements, then confirm it.
  * Online and credits payments confirm themselves.
  */
 export default function PaymentsPage() {
@@ -52,7 +52,7 @@ export default function PaymentsPage() {
   async function confirmOrder(o: OrderDoc) {
     const ok = await confirm({
       title: `Confirm ${usd(orderTotal(o))}?`,
-      message: `Only confirm once ${usd(orderTotal(o))} from ${o.payerName || o.senderName} (ref ${o.paymentRef || "—"}) is in Localink's ${paymentTitle(o.payment)} account. ${shopName(o.stallId)} is then told to hand it over, and ${usd(orderShare(o))} goes to its earnings on collection.`,
+      message: `Only confirm once ${usd(orderTotal(o))} from ${o.payerName || o.senderName} (ref ${o.paymentRef || "—"}) is in LocalinkGo's ${paymentTitle(o.payment)} account. ${shopName(o.stallId)} is then told to hand it over, and ${usd(orderShare(o))} goes to its earnings on collection.`,
       confirm: "Yes, the money is in",
     });
     if (ok) await run(o.id, () => confirmLocalinkPayment(o), `#${o.id} confirmed. The buyer and the shop have been told.`);
@@ -61,7 +61,7 @@ export default function PaymentsPage() {
   async function approvePro(p: PlanPaymentDoc) {
     const ok = await confirm({
       title: `Approve ${usd(p.amount)}?`,
-      message: `Only approve once ${usd(p.amount)} from ${p.payerName || shopName(p.shopId)} (ref ${p.paymentRef || "—"}) is in Localink's account. ${shopName(p.shopId)} gets ${p.months} month${p.months === 1 ? "" : "s"} of ${planOfPayment(p)}.`,
+      message: `Only approve once ${usd(p.amount)} from ${p.payerName || shopName(p.shopId)} (ref ${p.paymentRef || "—"}) is in LocalinkGo's account. ${shopName(p.shopId)} gets ${p.months} month${p.months === 1 ? "" : "s"} of ${planOfPayment(p)}.`,
       confirm: "Approve and switch Pro on",
     });
     if (ok) await run(p.id, () => decidePlanPayment(uid, p.id, "approved"), `Pro switched on for ${shopName(p.shopId)}.`);
@@ -87,7 +87,7 @@ export default function PaymentsPage() {
 
   return (
     <>
-      <PageHeader title="Payments to check" subtitle="Transfers to Localink's accounts. Online and credits payments confirm themselves." />
+      <PageHeader title="Payments to check" subtitle="Transfers to LocalinkGo's accounts. Online and credits payments confirm themselves." />
       <div className="mb-4">
         <Tabs
           value={tab}
@@ -102,7 +102,7 @@ export default function PaymentsPage() {
 
       {tab === "orders" &&
         (toCheck.length === 0 ? (
-          <Empty title="Nothing to check" message="Proof sent by buyers who paid Localink by transfer shows here." />
+          <Empty title="Nothing to check" message="Proof sent by buyers who paid LocalinkGo by transfer shows here." />
         ) : (
           <div className="grid gap-3 md:grid-cols-2">
             {toCheck.map((o) => (
@@ -119,7 +119,7 @@ export default function PaymentsPage() {
                   <dt className="text-ink-3">Reference</dt><dd className="font-semibold">{o.paymentRef || "—"}</dd>
                   <dt className="text-ink-3">Paid by</dt><dd>{o.payerName || "—"}</dd>
                   {!!o.serviceFee && (<><dt className="text-ink-3">Service fee</dt><dd>{usd(o.serviceFee)} (shop gets {usd(orderShare(o))})</dd></>)}
-                  {!!o.localinkDiscount && (<><dt className="text-ink-3">Localink discount</dt><dd>{usd(o.localinkDiscount)} off, paid by Localink (shop gets {usd(orderShare(o))})</dd></>)}
+                  {!!o.localinkDiscount && (<><dt className="text-ink-3">LocalinkGo discount</dt><dd>{usd(o.localinkDiscount)} off, paid by LocalinkGo (shop gets {usd(orderShare(o))})</dd></>)}
                 </dl>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {proofButton(o.slipUrl, `#${o.id} · ${usd(orderTotal(o))}`)}
