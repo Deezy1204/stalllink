@@ -7,7 +7,7 @@ import { useMerchant } from "@/components/merchant/MerchantData";
 import { NoShop } from "@/components/merchant/OrderBits";
 import { Badge, Button, Card, Input, Modal, PageHeader, Pill, Spinner, Switch, useConfirm, useToast } from "@/components/ui";
 import { paymentSummary } from "@/lib/catalog";
-import { PRO_DAYS, renewWithCredits, saveWalletSettings, startOnlinePlanPayment, startTrial, submitPlanPayment, watchShopPlanPayments } from "@/lib/money";
+import { earningsLine, PRO_DAYS, renewWithCredits, saveWalletSettings, startOnlinePlanPayment, startTrial, submitPlanPayment, watchShopPlanPayments } from "@/lib/money";
 import {
   activeTrial,
   canTrial,
@@ -263,8 +263,8 @@ function BuyPlan({ plan, onClose }: { plan: Plan; onClose: () => void }) {
       {carry != null && <p className="mt-1 text-xs text-brand">The {Math.floor(left)} days left on {PLAN_LABEL[current]} become {carry} days of {PLAN_LABEL[plan]}, before the months you buy now.</p>}
       <p className="mb-2 mt-5 text-sm font-bold">Pay with</p>
       <div className="space-y-2">
-        {option("credits", `Earnings of ${shop.name}`, balance + 0.001 >= price ? `${usd(balance)} available · instant` : `Only ${usd(balance)} available`, balance + 0.001 >= price)}
-        {config.onlineEnabled && option("online", "Pay online", "Card, EcoCash, OneMoney or InnBucks · instant")}
+        {option("credits", `Earnings of ${shop.name}`, earningsLine(wallet, price, "instant"), balance + 0.001 >= price)}
+        {config.onlineEnabled && option("online", "Pay online", "EcoCash, InnBucks, Zimswitch or card · instant")}
         {config.options.map((o) => option(o.id, paymentTitle(o), `${paymentSummary(o)} · upload proof`))}
       </div>
       {transfer && (

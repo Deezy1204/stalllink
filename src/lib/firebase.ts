@@ -1,6 +1,7 @@
 import { getApp, getApps, initializeApp, type FirebaseApp } from "firebase/app";
 import { getAuth, type Auth } from "firebase/auth";
 import { getFirestore, type Firestore } from "firebase/firestore";
+import { getFunctions, type Functions } from "firebase/functions";
 import { getStorage, type FirebaseStorage } from "firebase/storage";
 
 const config = {
@@ -26,3 +27,5 @@ export function firebaseApp(): FirebaseApp {
 export const auth = (): Auth => getAuth(firebaseApp());
 export const db = (): Firestore => getFirestore(firebaseApp());
 export const storage = (): FirebaseStorage => getStorage(firebaseApp());
+/** The Cloud Functions (us-central1, like all of LocalinkGo's). */
+export const functions = (): Functions => getFunctions(firebaseApp(), "us-central1");

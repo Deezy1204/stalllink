@@ -33,7 +33,7 @@ export function Shell({ children }: { children: ReactNode }) {
     // Low ratings from the last week, so problems surface quickly.
     { href: "/reviews", label: "Reviews", icon: "star", count: [...shopReviews, ...appReviews].filter((r) => !r.hidden && r.rating <= 2 && Date.now() - r.updatedAt < 7 * 864e5).length },
     { href: "/admins", label: "Admins", icon: "shieldCheck" },
-    { href: "/settings", label: "Payment settings", icon: "sparkles" },
+    { href: "/settings", label: "Settings", icon: "sparkles" },
     { href: "/guide", label: "How it works", icon: "book" },
   ];
 

@@ -46,7 +46,7 @@ Notes:
 | Dashboard | Users, merchants, shops, sales this month, 6-month chart, shops to verify, recent orders |
 | Shops | Search/filter, **verify** (only once the owner's identity is verified), **suspend / restore** (hides the shop from buyers), give a free month of any plan, delete, see payment methods, hours, branches, products |
 | Payouts | Payouts to send, with what each is made of (sales at full price, LocalinkGo's discount on them); mark paid or failed |
-| Payment settings | LocalinkGo's accounts, plan prices, fees and limits (products and branches per plan), LocalinkGo's discount for big baskets, Paynow and Didit keys (write-only) |
+| Settings | LocalinkGo's accounts, plan prices, fees and limits (products and branches per plan), LocalinkGo's discount for big baskets; with the developer password: online payments (Pesepay keys, live or test, on or off), identity checks (Didit keys) and changing the developer password. Keys are write-only. |
 | Users | Search/filter, **suspend / restore** accounts, **make admin** |
 | Send notification | To all users, merchants, customers, or people found by name, email or phone (each shown as Merchant or Customer); arrives in the app and as a push message; history of what was sent |
 | Orders | Search/filter by status and payment, order details, open the buyer's proof of payment |

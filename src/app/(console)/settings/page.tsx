@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 
 import { useAdminData } from "@/components/AdminData";
 import { PaymentForm } from "@/components/merchant/ShopForm";
-import { Button, Card, Input, PageHeader, Pill, Switch, useConfirm, useToast } from "@/components/ui";
+import { Button, Card, Input, Modal, PageHeader, Pill, Switch, useConfirm, useToast } from "@/components/ui";
 import { paymentSummary } from "@/lib/catalog";
-import { saveDiditSettings, savePaymentsConfig, savePaynowCredentials, watchKycConfig } from "@/lib/money";
+import { savePaymentsConfig, saveSecureSettings, watchKycConfig, watchPesepayConfig, type PesepayFlags } from "@/lib/money";
 import { PLAN_LABEL, PLANS, tierOffer, type Plan } from "@/lib/plans";
 import { paymentTitle, type PaymentOption, type PaymentsConfig } from "@/lib/types";
 
@@ -26,11 +26,15 @@ function toLimitsForm(l: PaymentsConfig["limits"]): LimitsForm {
   return Object.fromEntries(PLANS.map((p) => [p, { products: limitText(l[p].products), branches: limitText(l[p].branches) }])) as LimitsForm;
 }
 
+/** Something that needs the developer password; [run] returns the message shown afterwards. */
+type Guarded = { title: string; what: string; run: (password: string) => Promise<string> };
+
 /**
  * LocalinkGo's own settings (`config/payments`): the accounts buyers (and shops
- * paying for a plan) pay into, the online gateway, the plan prices and
- * service fees, and LocalinkGo's discount for big baskets. Plus the secret keys
- * the Cloud Functions use (Paynow, Didit), which nobody can read back here.
+ * paying for a plan) pay into, the plan prices and service fees, and
+ * LocalinkGo's discount for big baskets. Plus, behind the developer password,
+ * online payments (Pesepay) and identity checks (Didit), whose keys the Cloud
+ * Functions keep and nobody can read back here.
  */
 export default function SettingsPage() {
   const { config, loaded } = useAdminData();
@@ -43,12 +47,18 @@ export default function SettingsPage() {
   const [cap, setCap] = useState("");
   const [editing, setEditing] = useState<PaymentOption | "new" | null>(null);
   const [saving, setSaving] = useState(false);
-  const [paynowId, setPaynowId] = useState("");
-  const [paynowKey, setPaynowKey] = useState("");
+  const [pesepay, setPesepay] = useState({ integrationKey: "", encryptionKey: "" });
+  const [pesepaySet, setPesepaySet] = useState<PesepayFlags>({});
+  const [mode, setMode] = useState<"live" | "test" | null>(null);
   const [didit, setDidit] = useState({ apiKey: "", workflowId: "", webhookSecret: "" });
   const [kycSet, setKycSet] = useState<{ apiKeySet?: boolean; workflowSet?: boolean; webhookSet?: boolean; updatedAt?: number }>({});
+  const [newPassword, setNewPassword] = useState({ next: "", again: "" });
+  const [guard, setGuard] = useState<Guarded | null>(null);
 
   useEffect(() => watchKycConfig(setKycSet), []);
+  useEffect(() => watchPesepayConfig(setPesepaySet), []);
+  const savedMode = pesepaySet.mode ?? "live";
+  const shownMode = mode ?? savedMode;
 
   // Follow the saved settings until the admin starts editing.
   const [touched, setTouched] = useState(false);
@@ -110,7 +120,7 @@ export default function SettingsPage() {
 
   async function save() {
     if (invalid) return toast("Check the highlighted fields.", "error");
-    if (!c.options.length && !c.onlineEnabled) {
+    if (!c.options.length && !config.onlineEnabled) {
       const ok = await confirm({
         title: "No way to pay LocalinkGo?",
         message: "Without an account or online payments, buyers of Basic and Standard shops cannot pay, so those shops cannot take orders.",
@@ -145,26 +155,67 @@ export default function SettingsPage() {
     }
   }
 
-  async function saveKey() {
-    if (!paynowId.trim() || !paynowKey.trim()) return toast("Enter the integration ID and key.", "error");
-    try {
-      await savePaynowCredentials(paynowId, paynowKey);
-      setPaynowId("");
-      setPaynowKey("");
-      toast("Paynow details saved. They cannot be read back from the browser.");
-    } catch (e) {
-      toast(`Could not save: ${(e as Error).message}`, "error");
-    }
+  const encErr = pesepay.encryptionKey.trim() && pesepay.encryptionKey.trim().length !== 32 ? `32 characters (this has ${pesepay.encryptionKey.trim().length})` : null;
+
+  function savePesepay() {
+    const values = {
+      integrationKey: pesepay.integrationKey.trim(),
+      encryptionKey: pesepay.encryptionKey.trim(),
+      ...(mode && mode !== savedMode ? { mode } : !pesepaySet.mode ? { mode: shownMode } : {}),
+    };
+    if (encErr) return toast("The encryption key has 32 characters.", "error");
+    if (!values.integrationKey && !values.encryptionKey && !("mode" in values)) return toast("Enter the Pesepay keys, or choose live or test.", "error");
+    setGuard({
+      title: "Save Pesepay settings",
+      what: "Changing the online payment settings",
+      run: async (password) => {
+        await saveSecureSettings("pesepay", values, password);
+        setPesepay({ integrationKey: "", encryptionKey: "" });
+        setMode(null);
+        return "Pesepay settings saved. They cannot be read back from the browser.";
+      },
+    });
   }
 
-  async function saveDidit() {
-    try {
-      await saveDiditSettings(didit);
-      setDidit({ apiKey: "", workflowId: "", webhookSecret: "" });
-      toast("Didit settings saved. They cannot be read back from the browser.");
-    } catch (e) {
-      toast(`Could not save: ${(e as Error).message}`, "error");
-    }
+  function switchOnline(on: boolean) {
+    setGuard({
+      title: on ? "Switch online payments on" : "Switch online payments off",
+      what: on ? "Switching online payments on" : "Switching online payments off",
+      run: async (password) => {
+        await saveSecureSettings("pesepay", { onlineEnabled: on }, password);
+        return on ? "Online payments are on: buyers and shops can pay with Pesepay." : "Online payments are off.";
+      },
+    });
+  }
+
+  function saveDidit() {
+    if (!didit.apiKey.trim() && !didit.workflowId.trim() && !didit.webhookSecret.trim()) return toast("Enter at least one of the Didit settings.", "error");
+    const values = { ...didit };
+    setGuard({
+      title: "Save Didit settings",
+      what: "Changing the identity check settings",
+      run: async (password) => {
+        await saveSecureSettings("didit", values, password);
+        setDidit({ apiKey: "", workflowId: "", webhookSecret: "" });
+        return "Didit settings saved. They cannot be read back from the browser.";
+      },
+    });
+  }
+
+  const passwordErr = newPassword.next && newPassword.next.length < 6 ? "At least 6 characters" : null;
+  const againErr = newPassword.again && newPassword.again !== newPassword.next ? "Not the same" : null;
+  function changePassword() {
+    if (!newPassword.next || passwordErr || againErr || newPassword.again !== newPassword.next) return toast("Enter the new password twice (at least 6 characters).", "error");
+    const next = newPassword.next;
+    setGuard({
+      title: "Change the developer password",
+      what: "Changing the developer password",
+      run: async (password) => {
+        await saveSecureSettings("password", { newPassword: next }, password);
+        setNewPassword({ next: "", again: "" });
+        return "Developer password changed. Use the new one from now on.";
+      },
+    });
   }
 
   const r = c.rewards;
@@ -172,7 +223,7 @@ export default function SettingsPage() {
 
   return (
     <div className="mx-auto max-w-3xl">
-      <PageHeader title="Payment settings" subtitle="How buyers pay LocalinkGo, what LocalinkGo charges, and LocalinkGo's own discounts." />
+      <PageHeader title="Settings" subtitle="How buyers pay LocalinkGo, what LocalinkGo charges, LocalinkGo's own discounts, online payments and identity checks." />
       {!loaded && <p className="text-sm text-ink-3">Loading…</p>}
 
       <Card className="p-5">
@@ -288,21 +339,42 @@ export default function SettingsPage() {
         </div>
       </Card>
 
-      <Card className="mt-4 space-y-4 p-5">
-        <h2 className="text-lg font-bold">Online payments (Paynow)</h2>
+      <p className="mb-2 mt-8 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-ink-3">
+        <span aria-hidden>🔒</span> Developer password needed to change these
+      </p>
+
+      <Card className="space-y-4 p-5">
+        <div>
+          <h2 className="text-lg font-bold">Online payments (Pesepay)</h2>
+          <p className="mt-0.5 text-sm text-ink-3">
+            EcoCash, InnBucks, Zimswitch, Visa and Mastercard on Pesepay&apos;s page; paid orders and plans confirm themselves. Use the integration key and encryption key from
+            your Pesepay account. Try it in test mode first.
+          </p>
+          <p className="mt-2 text-xs text-ink-3">
+            Saved: integration key {pesepaySet.integrationKeySet ? "✓" : "—"} · encryption key {pesepaySet.encryptionKeySet ? "✓" : "—"} · {savedMode === "test" ? "test mode" : "live"}
+            {" "}(or set in the functions&apos; .env file).
+          </p>
+        </div>
         <Switch
-          checked={c.onlineEnabled}
-          onChange={(onlineEnabled) => edit({ onlineEnabled })}
+          checked={config.onlineEnabled}
+          onChange={switchOnline}
           label="Offer online payment"
-          description="Card, EcoCash, OneMoney and InnBucks on Paynow's page; paid orders confirm themselves. Switch on only once the Paynow details below are saved and tested in Paynow's test mode."
+          description={config.onlineEnabled ? "Buyers and shops can pay online now." : "Switch on once the Pesepay keys are saved and a test payment worked."}
         />
-        <div className="grid gap-3 border-t border-line pt-4 sm:grid-cols-2">
-          <Input label="Paynow integration ID" value={paynowId} onChange={(e) => setPaynowId(e.target.value)} autoComplete="off" />
-          <Input label="Paynow integration key" type="password" value={paynowKey} onChange={(e) => setPaynowKey(e.target.value)} autoComplete="new-password" />
+        <div className="border-t border-line pt-4">
+          <p className="mb-1.5 text-sm font-semibold">Pesepay account</p>
+          <div className="flex flex-wrap gap-2">
+            <Pill selected={shownMode === "live"} onClick={() => setMode("live")}>Live</Pill>
+            <Pill selected={shownMode === "test"} onClick={() => setMode("test")}>Test (sandbox)</Pill>
+          </div>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Input label="Integration key" type="password" value={pesepay.integrationKey} onChange={(e) => setPesepay((p) => ({ ...p, integrationKey: e.target.value }))} autoComplete="new-password" />
+          <Input label="Encryption key" type="password" value={pesepay.encryptionKey} onChange={(e) => setPesepay((p) => ({ ...p, encryptionKey: e.target.value }))} autoComplete="new-password" error={encErr} hint="32 characters" />
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <Button variant="secondary" onClick={saveKey}>Save Paynow details</Button>
-          <p className="text-xs text-ink-3">Stored for the Cloud Functions only; nobody can read them back here. Saving again replaces them.</p>
+          <Button variant="secondary" onClick={savePesepay}>Save Pesepay settings</Button>
+          <p className="text-xs text-ink-3">Only the fields you fill in are replaced. Nobody can read them back here.</p>
         </div>
       </Card>
 
@@ -330,6 +402,21 @@ export default function SettingsPage() {
         </div>
       </Card>
 
+      <Card className="mt-4 space-y-4 p-5">
+        <div>
+          <h2 className="text-lg font-bold">Developer password</h2>
+          <p className="mt-0.5 text-sm text-ink-3">
+            Needed to change online payments and identity checks, so a signed-in admin cannot change them by accident or on purpose. Five wrong tries lock the settings for 15
+            minutes, and the other admins are told about every change.
+          </p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Input label="New password" type="password" value={newPassword.next} onChange={(e) => setNewPassword((p) => ({ ...p, next: e.target.value }))} autoComplete="new-password" error={passwordErr} />
+          <Input label="New password again" type="password" value={newPassword.again} onChange={(e) => setNewPassword((p) => ({ ...p, again: e.target.value }))} autoComplete="new-password" error={againErr} />
+        </div>
+        <Button variant="secondary" onClick={changePassword}>Change developer password</Button>
+      </Card>
+
       <div className="sticky bottom-0 mt-6 flex justify-end gap-3 border-t border-line bg-surface/95 py-3 backdrop-blur">
         {touched && <Button variant="secondary" onClick={() => setTouched(false)}>Undo changes</Button>}
         <Button loading={saving} disabled={!touched} onClick={save}>Save settings</Button>
@@ -346,6 +433,50 @@ export default function SettingsPage() {
           }}
         />
       )}
+      {guard && <DeveloperPassword guard={guard} onClose={() => setGuard(null)} />}
     </div>
+  );
+}
+
+/** Asks for the developer password and runs [guard] with it; stays open on a wrong one. */
+function DeveloperPassword({ guard, onClose }: { guard: Guarded; onClose: () => void }) {
+  const toast = useToast();
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function submit(e?: FormEvent) {
+    e?.preventDefault();
+    if (!password) return setError("Enter the developer password.");
+    setBusy(true);
+    setError(null);
+    try {
+      toast(await guard.run(password));
+      onClose();
+    } catch (err) {
+      setError((err as Error).message);
+      setPassword("");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title={guard.title}
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose}>Cancel</Button>
+          <Button loading={busy} onClick={() => submit()}>Confirm</Button>
+        </>
+      }
+    >
+      <form onSubmit={submit} className="space-y-3">
+        <p className="text-sm text-ink-3">{guard.what} needs the developer password.</p>
+        <Input label="Developer password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="off" autoFocus error={error} />
+      </form>
+    </Modal>
   );
 }

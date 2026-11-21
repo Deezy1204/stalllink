@@ -87,11 +87,12 @@ export default function EarningsPage() {
     <div className="mx-auto max-w-4xl">
       <PageHeader title="Earnings" subtitle={`${shop.name} · ${PLAN_LABEL[plan]}: paid out ${schedule.toLowerCase()}`} />
       <Card className="bg-ink p-5 text-white">
-        <p className="text-sm font-semibold text-white/70">Available</p>
+        <p className="text-sm font-semibold text-white/70">Available to spend or pay out</p>
         <p className="mt-1 text-4xl font-extrabold">{usd(w?.balance ?? 0)}</p>
         <p className="mt-1 text-sm text-white/60">{line}</p>
-        <div className="mt-4 grid grid-cols-3 gap-2">
+        <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
           {[
+            ["Earned, all time", w?.earned ?? 0, "Everything this shop has earned on LocalinkGo"],
             ["Pending", w?.pending ?? 0, "Paid, not collected yet"],
             ["Paid out", w?.paidOut ?? 0, ""],
             ["Spent", w?.spent ?? 0, "On plans and at other shops"],

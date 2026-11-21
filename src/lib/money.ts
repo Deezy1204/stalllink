@@ -18,9 +18,10 @@ import {
   type DocumentData,
   type Unsubscribe,
 } from "firebase/firestore";
+import { httpsCallable } from "firebase/functions";
 import { getDownloadURL, ref, uploadBytesResumable } from "firebase/storage";
 
-import { db, storage } from "./firebase";
+import { db, functions, storage } from "./firebase";
 import { DEFAULT_LIMITS, PLANS, payoutDays, type Plan } from "./plans";
 import {
   cents,
@@ -35,8 +36,21 @@ import {
   type RewardsConfig,
   type ShopDoc,
   type ShopPromo,
+  usd,
   type WalletDoc,
 } from "./types";
+
+/**
+ * What a shop's earnings can pay towards [price]: everything available now
+ * (whatever month it was earned in) and all it has earned on LocalinkGo, all
+ * time. [extra] follows when there is enough, e.g. "instant".
+ */
+export function earningsLine(w: WalletDoc | null | undefined, price: number, extra = "") {
+  const balance = w?.balance ?? 0;
+  const earned = w?.earned ?? 0;
+  const enough = balance + 0.001 >= price;
+  return [enough ? `${usd(balance)} available` : `Only ${usd(balance)} available`, earned > 0 ? `${usd(earned)} earned all time` : "", enough ? extra : ""].filter(Boolean).join(" · ");
+}
 
 export const PRO_DAYS = 30;
 export const MIN_PAYOUT = 1;
@@ -280,24 +294,44 @@ export const markPayout = (adminUid: string, id: string, status: "paid" | "faile
 export const decidePlanPayment = (adminUid: string, id: string, status: "approved" | "rejected", note = "") =>
   updateDoc(doc(db(), "planPayments", id), { status, ...(note ? { note } : {}), handledBy: adminUid, handledAt: Date.now() });
 
-export const savePaymentsConfig = (c: PaymentsConfig) => setDoc(doc(db(), "config", "payments"), c);
+/** Everything but switching online payments on or off, which needs the developer password (saveSecureSettings). */
+export const savePaymentsConfig = (c: PaymentsConfig) => {
+  const rest: Partial<PaymentsConfig> = { ...c };
+  delete rest.onlineEnabled;
+  return setDoc(doc(db(), "config", "payments"), rest, { merge: true });
+};
 
-/** Write-only: no browser can read the key back (firestore.rules). */
-export const savePaynowCredentials = (integrationId: string, integrationKey: string) =>
-  setDoc(doc(db(), "private", "paynow"), { integrationId: integrationId.trim(), integrationKey: integrationKey.trim(), updatedAt: Date.now() });
+export type SecureSettings = "pesepay" | "didit" | "password";
 
-/** Write-only: the Didit API key and webhook secret (and workflow ID) for the identity checks. Empty fields are left as they are. */
-export async function saveDiditSettings(s: { apiKey?: string; workflowId?: string; webhookSecret?: string }) {
-  const fields = Object.fromEntries(Object.entries(s).map(([k, v]) => [k, (v ?? "").trim()]).filter(([, v]) => v));
-  if (!Object.keys(fields).length) throw new Error("Enter at least one of the Didit settings.");
-  await setDoc(doc(db(), "private", "didit"), { ...fields, updatedAt: Date.now() }, { merge: true });
-  // Public, so the console can say whether identity checks are set up (never the values).
-  await setDoc(
-    doc(db(), "config", "kyc"),
-    { ...(fields.apiKey ? { apiKeySet: true } : {}), ...(fields.workflowId ? { workflowSet: true } : {}), ...(fields.webhookSecret ? { webhookSet: true } : {}), updatedAt: Date.now() },
-    { merge: true },
-  );
+/**
+ * Saves what needs the developer password: the Pesepay keys and online
+ * payments on or off, the Didit settings, or a new developer password. The
+ * Cloud Function checks the password (functions/src/settings.ts); browsers
+ * cannot write these themselves (firestore.rules). Throws the server's
+ * message, e.g. "Wrong developer password. 4 tries left."
+ */
+export async function saveSecureSettings(kind: SecureSettings, values: Record<string, unknown>, password: string) {
+  try {
+    await httpsCallable(functions(), "saveSecureSettings")({ kind, values, password });
+  } catch (e) {
+    const err = e as { code?: string; message?: string };
+    if (err.code === "functions/not-found" || err.code === "functions/unavailable" || (err.code === "functions/internal" && err.message === "internal")) {
+      throw new Error("The settings service did not answer. If this keeps happening, the Cloud Functions need deploying.");
+    }
+    throw new Error(err.message || "Could not save.");
+  }
 }
+
+/** Which Pesepay keys are saved, and live or test (never the keys). */
+export interface PesepayFlags {
+  integrationKeySet?: boolean;
+  encryptionKeySet?: boolean;
+  mode?: "live" | "test";
+  updatedAt?: number;
+}
+
+export const watchPesepayConfig = (on: (c: PesepayFlags) => void): Unsubscribe =>
+  onSnapshot(doc(db(), "config", "pesepay"), (s) => on((s.data() as PesepayFlags | undefined) ?? {}), () => on({}));
 
 export const watchKycConfig = (on: (c: { apiKeySet?: boolean; workflowSet?: boolean; webhookSet?: boolean; updatedAt?: number }) => void): Unsubscribe =>
   onSnapshot(doc(db(), "config", "kyc"), (s) => on(s.data() ?? {}), () => on({}));
