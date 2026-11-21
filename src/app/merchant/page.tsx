@@ -64,7 +64,12 @@ export default function MerchantOverview() {
 
       <Card className="overflow-hidden">
         <div className="flex flex-col sm:flex-row">
-          {shop.bannerAsset?.startsWith("http") && <img src={shop.bannerAsset} alt="" className="h-36 w-full object-cover sm:h-auto sm:w-56" />}
+          {/* The photo fills the height of the text beside it (it never sets the card's height). */}
+          {shop.bannerAsset?.startsWith("http") && (
+            <div className="relative h-36 shrink-0 sm:h-auto sm:w-56">
+              <img src={shop.bannerAsset} alt="" className="absolute inset-0 size-full object-cover" />
+            </div>
+          )}
           <div className="flex flex-1 items-start gap-3 p-5">
             {!shop.bannerAsset?.startsWith("http") && <ShopThumb name={shop.name} className="size-14" />}
             <div className="min-w-0 flex-1">

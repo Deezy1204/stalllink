@@ -81,7 +81,7 @@ function ShopSwitcher({ onDone }: { onDone: () => void }) {
 
 export function MerchantShell({ children }: { children: ReactNode }) {
   const path = usePathname();
-  const { signOut } = useAuth();
+  const { signOut, isAdmin } = useAuth();
   const { profile, user, shopOrders, unread, shop } = useMerchant();
   const [open, setOpen] = useState(false);
 
@@ -129,7 +129,15 @@ export function MerchantShell({ children }: { children: ReactNode }) {
       <div className="mt-auto rounded-2xl bg-surface-2 p-3">
         <p className="truncate text-sm font-semibold">{profile.name || user.displayName || user.email}</p>
         <p className="truncate text-xs text-ink-3">{user.email}</p>
-        <button onClick={signOut} className="mt-2 text-sm font-semibold text-brand hover:underline">Sign out</button>
+        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
+          {/* Admins switch back the way they came (the admin console links here as "Merchant console"). */}
+          {isAdmin && (
+            <Link href="/" onClick={() => setOpen(false)} className="text-sm font-semibold text-ink-2 hover:underline">
+              Admin console
+            </Link>
+          )}
+          <button onClick={signOut} className="text-sm font-semibold text-brand hover:underline">Sign out</button>
+        </div>
       </div>
     </nav>
   );
