@@ -7,7 +7,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { BrandHeader, BrandInline } from "@/components/Brand";
 import { Icon, type IconName } from "@/components/icons";
-import { LegalLinks } from "@/components/Legal";
+import { AccountFooter } from "@/components/AccountFooter";
 import { planName, planOf } from "@/lib/plans";
 import { useMerchant } from "./MerchantData";
 
@@ -127,20 +127,14 @@ export function MerchantShell({ children }: { children: ReactNode }) {
           {!!n.count && <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${n.alert ? "bg-brand text-white" : "bg-surface-2 text-ink-2"}`}>{n.count}</span>}
         </Link>
       ))}
-      <div className="mt-auto rounded-2xl bg-surface-2 p-3">
-        <p className="truncate text-sm font-semibold">{profile.name || user.displayName || user.email}</p>
-        <p className="truncate text-xs text-ink-3">{user.email}</p>
-        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
-          {/* Admins switch back the way they came (the admin console links here as "Merchant console"). */}
-          {isAdmin && (
-            <Link href="/" onClick={() => setOpen(false)} className="text-sm font-semibold text-ink-2 hover:underline">
-              Admin console
-            </Link>
-          )}
-          <button onClick={signOut} className="text-sm font-semibold text-brand hover:underline">Sign out</button>
-        </div>
-        <LegalLinks className="mt-2" />
-      </div>
+      {/* Admins switch back the way they came (the admin console links here as "Merchant console"). */}
+      <AccountFooter
+        name={profile.name || user.displayName || ""}
+        email={user.email ?? ""}
+        switchTo={isAdmin ? { href: "/", label: "Admin console", icon: "shieldCheck" } : undefined}
+        onSignOut={signOut}
+        onNavigate={() => setOpen(false)}
+      />
     </nav>
   );
 

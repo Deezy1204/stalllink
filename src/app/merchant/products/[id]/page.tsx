@@ -8,7 +8,7 @@ import { Icon } from "@/components/icons";
 import { useMerchant } from "@/components/merchant/MerchantData";
 import { NoShop } from "@/components/merchant/OrderBits";
 import { PhotoSlots } from "@/components/merchant/Photos";
-import { Button, Card, Empty, Input, Pill, Select, Spinner, Switch, Textarea, useConfirm, useToast } from "@/components/ui";
+import { BottomBar, Button, Card, Empty, Input, Pill, Select, Spinner, Switch, Textarea, useConfirm, useToast } from "@/components/ui";
 import { amount, MAX_PRODUCT_PHOTOS, MEASURE_UNITS, PRODUCT_CATEGORIES, fmtNumber, productPhotos, unitMenuLabel, variationLabel, zar } from "@/lib/catalog";
 import { deleteProduct, saveProduct } from "@/lib/merchant";
 import { bulkPrices, planOf } from "@/lib/plans";
@@ -296,7 +296,7 @@ export default function ProductForm() {
         </div>
         <div>
           <p className="mb-2 flex justify-between text-sm font-semibold">Product photos <span className="font-normal text-ink-3">Square photos look best · the first is the cover</span></p>
-          <PhotoSlots photos={form.images} max={MAX_PRODUCT_PHOTOS} firstLabel="Cover" onChange={(images) => set({ images })} />
+          <PhotoSlots photos={form.images} max={MAX_PRODUCT_PHOTOS} firstLabel="Cover" links onChange={(images) => set({ images })} />
         </div>
         <Textarea
           label="Description & pickup notes"
@@ -400,12 +400,11 @@ export default function ProductForm() {
         />
       </Card>
 
-      <div className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-white/95 backdrop-blur lg:left-64">
-        <div className="mx-auto flex max-w-3xl gap-3 px-4 py-3">
-          <Button variant="secondary" className="flex-1" onClick={() => router.push("/merchant/products")}>Cancel</Button>
-          <Button className="flex-[2]" loading={saving} onClick={save}>Save product</Button>
-        </div>
-      </div>
+      <BottomBar width="max-w-3xl">
+        <p className="hidden min-w-0 flex-1 truncate text-sm text-ink-3 sm:block">{original.current ? `Editing ${original.current.name}` : "New product"} · kept on this device until you save</p>
+        <Button variant="secondary" className="flex-1 sm:w-32 sm:flex-none" onClick={() => router.push("/merchant/products")}>Cancel</Button>
+        <Button className="flex-[2] sm:w-44 sm:flex-none" loading={saving} onClick={save}>Save product</Button>
+      </BottomBar>
     </div>
   );
 }

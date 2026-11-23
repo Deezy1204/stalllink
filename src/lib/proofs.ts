@@ -16,10 +16,10 @@ export const normRef = (r: string) => r.toUpperCase().replace(/[^A-Z0-9]/g, "");
 export function refProblem(ref: string, notThese: string[] = []): string | null {
   const r = normRef(ref);
   if (!r) return "Enter the transaction reference from the payment SMS or receipt";
+  if (notThese.some((x) => normRef(x) === r)) return "That is the reference typed on the payment. Enter the one the bank or wallet gave it";
   if (r.length < 5) return "That reference is too short. Copy the whole reference from the SMS or receipt";
   if (r.length > 40) return "That reference is too long";
   if (!/[0-9]/.test(r)) return "A transaction reference has digits in it. Copy it from the SMS or receipt";
-  if (notThese.some((x) => normRef(x) === r)) return "That is the reference typed on the payment. Enter the one the bank or wallet gave it";
   return null;
 }
 

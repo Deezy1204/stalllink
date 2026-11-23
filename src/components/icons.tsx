@@ -347,6 +347,25 @@ const ICONS = {
       </>
     ),
   },
+  logout: {
+    anim: "ai-shake",
+    body: (
+      <>
+        <P d="M9.5 20.5H6a2 2 0 0 1-2-2v-13a2 2 0 0 1 2-2h3.5" />
+        <P d="M15.5 16.5 20 12l-4.5-4.5" />
+        <P d="M20 12H9.5" />
+      </>
+    ),
+  },
+  link: {
+    anim: "ai-turn",
+    body: (
+      <>
+        <P d="M10 13.5a4 4 0 0 0 6 .4l3-3a4 4 0 0 0-5.7-5.7l-1.7 1.7" />
+        <P d="M14 10.5a4 4 0 0 0-6-.4l-3 3a4 4 0 0 0 5.7 5.7l1.7-1.7" />
+      </>
+    ),
+  },
 } satisfies Record<string, { anim: string; body: ReactNode }>;
 
 export type IconName = keyof typeof ICONS;

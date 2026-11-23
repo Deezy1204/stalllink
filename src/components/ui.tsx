@@ -217,6 +217,29 @@ export function PageHeader({ title, subtitle, actions }: { title: string; subtit
 
 // ---- modal --------------------------------------------------------------------------
 
+/**
+ * Actions pinned to the bottom of the window (Save, Upload…), lined up with
+ * the page's column: [width] is the page's own max width (e.g. "max-w-3xl").
+ * Portalled to <body> like Modal: the page's entrance animation leaves a
+ * transform on <main>, which would otherwise pin a "fixed" bar to <main>
+ * (offset by the sidebar a second time and cut off) instead of the window.
+ * Pages using it keep bottom padding (pb-24) so nothing hides under it.
+ */
+export function BottomBar({ children, width = "max-w-3xl" }: { children: ReactNode; width?: string }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  if (!mounted) return null;
+  return createPortal(
+    <div className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-white/95 backdrop-blur lg:left-64">
+      {/* The same frame as the merchant console's <main>, then the page's column. */}
+      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+        <div className={`mx-auto flex min-h-16 items-center gap-3 py-3 ${width}`}>{children}</div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
 export function Modal({
   open,
   onClose,

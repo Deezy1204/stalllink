@@ -8,7 +8,7 @@ import { useAdminData } from "./AdminData";
 import { useAuth } from "./AuthProvider";
 import { BrandHeader, BrandInline } from "./Brand";
 import { Icon, type IconName } from "./icons";
-import { LegalLinks } from "./Legal";
+import { AccountFooter } from "./AccountFooter";
 
 export function Shell({ children }: { children: ReactNode }) {
   const path = usePathname();
@@ -39,7 +39,7 @@ export function Shell({ children }: { children: ReactNode }) {
   ];
 
   const sidebar = (
-    <nav className="flex h-full flex-col gap-1 p-4">
+    <nav className="flex h-full flex-col gap-1 overflow-y-auto p-4">
       <div className="mb-6 px-2">
         <BrandHeader label="Admin" />
       </div>
@@ -58,15 +58,13 @@ export function Shell({ children }: { children: ReactNode }) {
           </Link>
         );
       })}
-      <div className="mt-auto rounded-2xl bg-surface-2 p-3">
-        <p className="truncate text-sm font-semibold">{user?.displayName || user?.email}</p>
-        <p className="truncate text-xs text-ink-3">{user?.email}</p>
-        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
-          <Link href="/merchant" className="text-sm font-semibold text-ink-2 hover:underline">Merchant console</Link>
-          <button onClick={signOut} className="text-sm font-semibold text-brand hover:underline">Sign out</button>
-          <LegalLinks className="mt-2" />
-        </div>
-      </div>
+      <AccountFooter
+        name={user?.displayName ?? ""}
+        email={user?.email ?? ""}
+        switchTo={{ href: "/merchant", label: "Merchant console", icon: "store" }}
+        onSignOut={signOut}
+        onNavigate={() => setOpen(false)}
+      />
     </nav>
   );
 

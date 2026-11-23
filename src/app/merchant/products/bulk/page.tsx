@@ -7,7 +7,7 @@ import { useRef, useState } from "react";
 import { Icon } from "@/components/icons";
 import { useMerchant } from "@/components/merchant/MerchantData";
 import { NoShop } from "@/components/merchant/OrderBits";
-import { Badge, Button, Card, PageHeader, Spinner, useToast } from "@/components/ui";
+import { Badge, BottomBar, Button, Card, PageHeader, Spinner, useToast } from "@/components/ui";
 import { productCategoryLabel, productPhotos, variationLabel } from "@/lib/catalog";
 import { importProducts } from "@/lib/merchant";
 import { PLAN_LABEL, planOf, productLimit } from "@/lib/plans";
@@ -196,12 +196,13 @@ export default function BulkUploadPage() {
       )}
 
       {canUpload && r && (
-        <div className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-white/95 backdrop-blur lg:left-64">
-          <div className="mx-auto flex max-w-4xl items-center gap-3 px-4 py-3">
-            <span className="flex-1 text-sm text-ink-3">{r.products.length} product{r.products.length === 1 ? "" : "s"} ready{skipped.length ? `, ${skipped.length} row${skipped.length === 1 ? "" : "s"} left out` : ""}</span>
-            <Button loading={saving} onClick={() => upload(r)}>Upload {r.products.length} product{r.products.length === 1 ? "" : "s"}</Button>
-          </div>
-        </div>
+        <BottomBar width="max-w-4xl">
+          <p className="min-w-0 flex-1 text-sm leading-snug text-ink-3">
+            <b className="text-ink">{r.products.length} product{r.products.length === 1 ? "" : "s"} ready</b>
+            {skipped.length ? <span className="block sm:inline"> · {skipped.length} row{skipped.length === 1 ? "" : "s"} left out</span> : null}
+          </p>
+          <Button className="shrink-0 sm:w-56" loading={saving} onClick={() => upload(r)}>Upload {r.products.length} product{r.products.length === 1 ? "" : "s"}</Button>
+        </BottomBar>
       )}
     </div>
   );

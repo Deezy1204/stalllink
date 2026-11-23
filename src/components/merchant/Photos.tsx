@@ -4,9 +4,27 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { Icon } from "@/components/icons";
-import { useToast } from "@/components/ui";
+import { Button, Input, useToast } from "@/components/ui";
 import { uploadPhoto } from "@/lib/merchant";
+import { imageUrlOf } from "@/lib/productImport";
 import { useMerchant } from "./MerchantData";
+
+/** Resolves once [url] has loaded as a picture in the browser; rejects if not within [ms]. */
+function loadsAsImage(url: string, ms = 12000) {
+  return new Promise<void>((resolve, reject) => {
+    const img = new Image();
+    const timer = setTimeout(() => reject(new Error("timeout")), ms);
+    img.onload = () => {
+      clearTimeout(timer);
+      img.naturalWidth > 0 ? resolve() : reject(new Error("empty"));
+    };
+    img.onerror = () => {
+      clearTimeout(timer);
+      reject(new Error("error"));
+    };
+    img.src = url;
+  });
+}
 
 /** Opens the file picker (camera on phones) and uploads the chosen photo. */
 export function usePhotoUpload() {
@@ -83,14 +101,37 @@ export function PhotoViewer({ photos, start = 0, onClose }: { photos: string[]; 
 }
 
 /**
- * Up to [max] photo slots: add (upload), view, make one the cover / front
- * photo (moves it first) or remove. [onChange] gets the new list.
+ * Up to [max] photo slots: add (upload, or with [links] a web link to a
+ * picture), view, make one the cover / front photo (moves it first) or
+ * remove. [onChange] gets the new list.
  */
-export function PhotoSlots({ photos, max, onChange, firstLabel }: { photos: string[]; max: number; onChange: (list: string[]) => void; firstLabel?: string }) {
+export function PhotoSlots({ photos, max, onChange, firstLabel, links = false }: { photos: string[]; max: number; onChange: (list: string[]) => void; firstLabel?: string; links?: boolean }) {
   const { upload, progress } = usePhotoUpload();
   const input = useRef<HTMLInputElement>(null);
   const [viewing, setViewing] = useState<number | null>(null);
   const [menu, setMenu] = useState<number | null>(null);
+  const [linking, setLinking] = useState(false);
+  const [link, setLink] = useState("");
+  const [linkError, setLinkError] = useState<string | null>(null);
+  const [checking, setChecking] = useState(false);
+
+  async function addLink() {
+    const url = imageUrlOf(link);
+    if (!url) return setLinkError("Paste a web link that starts with https://");
+    if (photos.includes(url)) return setLinkError("That photo is already added.");
+    setChecking(true);
+    setLinkError(null);
+    try {
+      await loadsAsImage(url);
+      onChange([...photos, url].slice(0, max));
+      setLink("");
+      setLinking(false);
+    } catch {
+      setLinkError("That link does not open a picture. Use the picture's own address (right-click the picture › Copy image address), or a Google Drive file shared with “Anyone with the link”.");
+    } finally {
+      setChecking(false);
+    }
+  }
 
   async function add(files: FileList | null) {
     const list = [...photos];
@@ -136,13 +177,47 @@ export function PhotoSlots({ photos, max, onChange, firstLabel }: { photos: stri
             ) : (
               <>
                 <Icon name="camera" className="size-6" />
-                Add photo
+                Upload photo
               </>
             )}
           </button>
         )}
+        {links && photos.length < max && (
+          <button
+            type="button"
+            onClick={() => { setLinking((v) => !v); setLinkError(null); }}
+            aria-expanded={linking}
+            className={`group flex aspect-square flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed text-xs font-semibold transition ${linking ? "border-brand bg-brand-50 text-brand" : "border-line bg-surface text-ink-2 hover:border-brand/40 hover:bg-brand-50/40 hover:text-brand"}`}
+          >
+            <Icon name="link" className="size-6" />
+            Photo link
+          </button>
+        )}
       </div>
-      <p className="mt-1.5 text-xs text-ink-3">{photos.length} of {max} photos{photos.length > 1 && firstLabel ? " · click one to view, reorder or remove" : ""}</p>
+      {links && linking && photos.length < max && (
+        <div className="mt-3 animate-fade-in rounded-2xl border border-line bg-surface p-3">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
+            <div className="min-w-0 flex-1">
+              <Input
+                aria-label="Photo link"
+                value={link}
+                onChange={(e) => { setLink(e.target.value); setLinkError(null); }}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addLink(); } }}
+                placeholder="https://… link to a picture"
+                inputMode="url"
+                autoFocus
+                error={linkError}
+                hint="The picture's own web address (ending in .jpg, .png…), or a Google Drive link shared with “Anyone with the link”."
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button loading={checking} onClick={addLink} className="h-11 flex-1 sm:flex-none">Add link</Button>
+              <Button variant="secondary" onClick={() => { setLinking(false); setLink(""); setLinkError(null); }} className="h-11 flex-1 sm:flex-none">Cancel</Button>
+            </div>
+          </div>
+        </div>
+      )}
+      <p className="mt-1.5 text-xs text-ink-3">{photos.length} of {max} photos{links ? " · upload them or add a web link" : ""}{photos.length > 1 && firstLabel ? " · click one to view, reorder or remove" : ""}</p>
       <input ref={input} type="file" accept="image/*" multiple hidden onChange={(e) => { add(e.target.files); e.target.value = ""; }} />
       {viewing != null && <PhotoViewer photos={photos} start={viewing} onClose={() => setViewing(null)} />}
     </div>

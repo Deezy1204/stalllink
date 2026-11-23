@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { Icon } from "@/components/icons";
-import { Button, Card, Input, Modal, Pill, Switch, Textarea, useToast } from "@/components/ui";
+import { BottomBar, Button, Card, Input, Modal, Pill, Switch, Textarea, useToast } from "@/components/ui";
 import {
   clock,
   DAY_NAMES,
@@ -404,12 +404,10 @@ export function ShopForm({ shop }: { shop: ShopDoc | null }) {
         </Section>
       </div>
 
-      <div className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-white/95 backdrop-blur lg:left-64">
-        <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 py-3">
-          <p className="hidden flex-1 text-sm text-ink-3 sm:block">{missing.length ? `Still needed: ${missing.join(", ")}` : "Everything is filled in."}</p>
-          <Button className="w-full sm:w-auto" loading={saving} onClick={publish}>{shop ? "Save changes" : "Publish shop"}</Button>
-        </div>
-      </div>
+      <BottomBar width="max-w-3xl">
+        <p className="hidden min-w-0 flex-1 truncate text-sm text-ink-3 sm:block">{missing.length ? `Still needed: ${missing.join(", ")}` : "Everything is filled in."}</p>
+        <Button className="w-full sm:w-44" loading={saving} onClick={publish}>{shop ? "Save changes" : "Publish shop"}</Button>
+      </BottomBar>
 
       <MapPicker
         open={pinOpen}
