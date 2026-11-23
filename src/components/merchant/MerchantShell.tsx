@@ -7,6 +7,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { BrandHeader, BrandInline } from "@/components/Brand";
 import { Icon, type IconName } from "@/components/icons";
+import { LegalLinks } from "@/components/Legal";
 import { planName, planOf } from "@/lib/plans";
 import { useMerchant } from "./MerchantData";
 
@@ -138,6 +139,7 @@ export function MerchantShell({ children }: { children: ReactNode }) {
           )}
           <button onClick={signOut} className="text-sm font-semibold text-brand hover:underline">Sign out</button>
         </div>
+        <LegalLinks className="mt-2" />
       </div>
     </nav>
   );

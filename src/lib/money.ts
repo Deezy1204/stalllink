@@ -22,6 +22,7 @@ import { httpsCallable } from "firebase/functions";
 import { getDownloadURL, ref, uploadBytesResumable } from "firebase/storage";
 
 import { db, functions, storage } from "./firebase";
+import { addClaims, commitProof, newBatch, proofFileProblem, refKey, refProblem, sha256 } from "./proofs";
 import { DEFAULT_LIMITS, PLANS, payoutDays, type Plan } from "./plans";
 import {
   cents,
@@ -31,6 +32,7 @@ import {
   type PaymentOption,
   type PaymentsConfig,
   type PayoutDoc,
+  placedByShop,
   type PlanLimit,
   type PlanPaymentDoc,
   type RewardsConfig,
@@ -228,27 +230,45 @@ export async function startOnlinePlanPayment(uid: string, shopId: string, plan: 
   });
 }
 
-/** Proof of paying LocalinkGo for a plan by transfer; an admin approves it. */
-export async function submitPlanPayment(uid: string, shop: ShopDoc, plan: Plan, months: number, amount: number, payment: PaymentOption, file: File, reference: string, payerName: string) {
-  if (file.size >= 8 * 1024 * 1024) throw new Error("That file is too large (8 MB at most).");
+/** The reference LocalinkGo shows shops to type on a plan transfer ("PRO-shop1"); not a transaction reference. */
+export const planNarration = (plan: Plan, shopId: string) => `${plan.toUpperCase()}-${shopId}`;
+
+/**
+ * Proof of paying LocalinkGo for a plan by transfer; an admin approves it.
+ * The reference and the file are claimed for this payment (firestore.rules
+ * refuse ones another payment holds), so it throws the reason if refused.
+ */
+export async function submitPlanPayment(uid: string, shop: ShopDoc, plan: Plan, months: number, amount: number, payment: PaymentOption, file: File, reference: string, payerName: string, amountSent: number) {
+  const fileErr = proofFileProblem(file);
+  if (fileErr) throw new Error(fileErr);
+  const refErr = refProblem(reference, [planNarration(plan, shop.id)]);
+  if (refErr) throw new Error(refErr);
   const target = doc(collection(db(), "planPayments"));
+  const hash = await sha256(file);
+  const key = refKey(true, shop.id, reference);
   const ext = file.type === "application/pdf" ? "pdf" : file.type === "image/png" ? "png" : "jpg";
   const slip = ref(storage(), `planSlips/${uid}/${target.id}/proof.${ext}`);
   const task = uploadBytesResumable(slip, file, { contentType: file.type || "image/jpeg" });
   await new Promise<void>((res, rej) => task.on("state_changed", undefined, rej, () => res()));
-  await setDoc(target, {
+  const batch = newBatch();
+  addClaims(batch, "plan", target.id, uid, key, hash);
+  batch.set(target, {
     shopId: shop.id,
     ownerId: uid,
     plan,
     months,
     amount,
+    amountSent,
     payment,
     slipUrl: await getDownloadURL(slip),
-    paymentRef: reference,
+    slipHash: hash,
+    paymentRef: reference.trim(),
+    paymentRefKey: key,
     payerName,
     status: "proofSent",
     createdAt: Date.now(),
   });
+  await commitProof(batch, "plan", target.id, key, hash);
 }
 
 // ---- admins -------------------------------------------------------------------------------------
@@ -267,32 +287,47 @@ export const watchAllPlanPayments = (on: (v: PlanPaymentDoc[]) => void, onError:
     onError,
   );
 
-/** The money for a LocalinkGo order arrived: the functions book the shop's earnings and tell the buyer and shop. */
-export const confirmLocalinkPayment = (o: OrderDoc) => updateDoc(doc(db(), "orders", o.id), { paymentStatus: "confirmed", paidVia: "transfer", paidAt: Date.now() });
+/**
+ * The money for a LocalinkGo order arrived ([received], from LocalinkGo's
+ * statement): the functions book the shop's earnings and tell the buyer and shop.
+ */
+export const confirmLocalinkPayment = (o: OrderDoc, received: number) =>
+  updateDoc(doc(db(), "orders", o.id), { paymentStatus: "confirmed", paidVia: "transfer", paidAt: Date.now(), receivedAmount: received });
 
 /** The proof did not match a payment: back to "awaiting proof" so the buyer can send it again, and they are told why. */
 export async function rejectLocalinkProof(adminUid: string, o: OrderDoc, reason: string) {
   await updateDoc(doc(db(), "orders", o.id), { paymentStatus: "awaitingProof" });
-  if (!o.senderId) return;
-  await addDoc(collection(db(), "notifications"), {
-    title: `Payment for #${o.id} not found`,
-    body: `LocalinkGo could not match your proof${reason ? `: ${reason}` : ""}. Check the amount and reference, and send it again.`,
-    time: Date.now(),
-    icon: "receipt_long",
-    color: "neutral",
-    unread: true,
-    orderId: o.id,
-    toUser: o.senderId,
-    toPhone: "",
-    fromUser: adminUid,
-  }).catch(() => {});
+  const note = (to: { toUser?: string; toPhone?: string }, body: string) =>
+    addDoc(collection(db(), "notifications"), {
+      title: `Payment for #${o.id} not found`,
+      body,
+      time: Date.now(),
+      icon: "receipt_long",
+      color: "neutral",
+      unread: true,
+      orderId: o.id,
+      toUser: to.toUser ?? "",
+      toPhone: to.toPhone ?? "",
+      fromUser: adminUid,
+    }).catch(() => {});
+  const why = `LocalinkGo could not match the proof${reason ? `: ${reason}` : ""}.`;
+  // An order the shop took: tell its customer (by phone) and the shop, which may have sent the proof for them.
+  if (placedByShop(o)) {
+    await Promise.all([
+      o.customerPhone ? note({ toPhone: o.customerPhone }, `${why} Check the amount and reference, and send the proof again.`) : null,
+      o.shopOwnerId ? note({ toUser: o.shopOwnerId }, `${why} Ask ${o.senderName || "the customer"} for the right proof before handing the order over.`) : null,
+    ]);
+    return;
+  }
+  if (o.senderId) await note({ toUser: o.senderId }, `${why} Check the amount and reference, and send it again.`);
 }
 
 export const markPayout = (adminUid: string, id: string, status: "paid" | "failed", details: { reference?: string; note?: string }) =>
   updateDoc(doc(db(), "payouts", id), { status, ...(details.reference ? { reference: details.reference } : {}), ...(details.note ? { note: details.note } : {}), handledBy: adminUid, handledAt: Date.now() });
 
-export const decidePlanPayment = (adminUid: string, id: string, status: "approved" | "rejected", note = "") =>
-  updateDoc(doc(db(), "planPayments", id), { status, ...(note ? { note } : {}), handledBy: adminUid, handledAt: Date.now() });
+/** Approves or rejects a plan payment; [received] is what LocalinkGo's statement shows (when known). */
+export const decidePlanPayment = (adminUid: string, id: string, status: "approved" | "rejected", note = "", received?: number) =>
+  updateDoc(doc(db(), "planPayments", id), { status, ...(note ? { note } : {}), ...(received != null ? { receivedAmount: received } : {}), handledBy: adminUid, handledAt: Date.now() });
 
 /** Everything but switching online payments on or off, which needs the developer password (saveSecureSettings). */
 export const savePaymentsConfig = (c: PaymentsConfig) => {

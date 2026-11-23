@@ -23,7 +23,7 @@ import { getDownloadURL, ref, uploadBytesResumable } from "firebase/storage";
 
 import { digitsOnly, dollars, hoursSummary, legacyCategory } from "./catalog";
 import { db, storage } from "./firebase";
-import { orderTotal, type Discount, type NotificationDoc, type OrderDoc, type Product, type ShopDoc, type ShopPromo, type UserDoc } from "./types";
+import { orderTotal, placedByShop, type Discount, type NotificationDoc, type OrderDoc, type Product, type ShopDoc, type ShopPromo, type UserDoc } from "./types";
 
 /** Firestore refuses `undefined` values: drop them (deeply) before writing. */
 function clean<T>(v: T): T {
@@ -229,6 +229,22 @@ export const saveProduct = (shopId: string, product: Product) =>
 
 export const deleteProduct = (shopId: string, productId: string) => editProducts(shopId, (list) => list.filter((p) => p.id !== productId));
 
+/**
+ * A bulk upload: replaces the products with the same id and adds the others
+ * after the shop's own (so what buyers see on a limited plan stays the same),
+ * in one write against the latest copy of the shop.
+ */
+export const importProducts = (shopId: string, products: Product[]) =>
+  editProducts(shopId, (list) => {
+    const byId = new Map(products.map((p) => [p.id, p]));
+    const kept = list.map((p) => {
+      const next = byId.get(p.id);
+      byId.delete(p.id);
+      return next ?? p;
+    });
+    return [...kept, ...byId.values()];
+  });
+
 export const patchProduct = (shopId: string, productId: string, patch: (p: Product) => Partial<Product>) =>
   editProducts(shopId, (list) => list.map((p) => (p.id === productId ? { ...p, ...patch(p) } : p)));
 
@@ -244,16 +260,13 @@ export const savePromo = (shopId: string, promo: ShopPromo | null) => updateDoc(
  * The shop has checked the buyer's proof (or the money arrived). Tells the
  * buyer. Only for payments to the shop itself: LocalinkGo confirms payments made to it.
  */
-export async function confirmPayment(uid: string, o: OrderDoc, shopName: string) {
+export async function confirmPayment(uid: string, o: OrderDoc, shopName: string, received: number) {
   if (o.payTo === "localink") throw new Error("LocalinkGo confirms payments made through LocalinkGo.");
-  await updateDoc(doc(db(), "orders", o.id), { paymentStatus: "confirmed" });
-  if (o.senderId) {
-    await notify(
-      uid,
-      { title: "Payment confirmed", body: `${shopName} confirmed your ${dollars(orderTotal(o))} payment for #${o.id}.`, icon: "verified", color: "secondary", orderId: o.id },
-      { userId: o.senderId },
-    ).catch(() => {});
-  }
+  await updateDoc(doc(db(), "orders", o.id), { paymentStatus: "confirmed", receivedAmount: received });
+  const n = { title: "Payment confirmed", body: `${shopName} confirmed your ${dollars(orderTotal(o))} payment for #${o.id}.`, icon: "verified", color: "secondary" as const, orderId: o.id };
+  // An order the shop took: its customer paid, not the shop owner who placed it.
+  const to = placedByShop(o) ? { phone: o.customerPhone } : { userId: o.senderId };
+  if (to.phone || to.userId) await notify(uid, n, to).catch(() => {});
 }
 
 /** The groceries were handed over. Tells the buyer and the recipient. */
@@ -268,8 +281,16 @@ export async function releaseOrder(uid: string, o: OrderDoc, shopName: string, h
     ...(o.payTo === "localink" ? {} : { paymentStatus: "confirmed" }),
   });
   const done = { title: "Groceries collected", body: `${o.recipient.name} collected order #${o.id} at ${shopName}.`, icon: "check_circle", color: "secondary" as const, orderId: o.id };
+  const shopTook = placedByShop(o);
   await Promise.all([
-    o.senderId ? notify(uid, done, { userId: o.senderId }) : null,
+    // An order the shop took: tell its customer (unless they collected it themselves).
+    shopTook
+      ? o.customerPhone && o.customerPhone !== digitsOnly(o.recipient.phone)
+        ? notify(uid, done, { phone: o.customerPhone })
+        : null
+      : o.senderId
+        ? notify(uid, done, { userId: o.senderId })
+        : null,
     digitsOnly(o.recipient.phone) ? notify(uid, done, { phone: o.recipient.phone }) : null,
   ]).catch(() => {});
 }

@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "fflate": "0.8.2",
     "firebase": "^11.10.0",
     "jspdf": "^4.2.1",
     "jsqr": "^1.4.0",

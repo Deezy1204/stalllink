@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { Icon } from "@/components/icons";
+import { PRIVACY_IDENTITY_URL } from "@/components/Legal";
 import { useMerchant } from "@/components/merchant/MerchantData";
 import { Button, Card, PageHeader, useToast } from "@/components/ui";
 import { recheckKyc, startKyc } from "@/lib/money";
@@ -100,7 +101,8 @@ export default function VerifyPage() {
           </>
         )}
         {done && <Link href="/merchant" className="mt-6 inline-flex h-10 items-center rounded-xl bg-brand px-4 text-sm font-semibold text-white">Continue</Link>}
-        <p className="mt-6 flex items-center gap-1.5 text-xs text-ink-3"><Icon name="shieldCheck" className="size-4" /> Your documents go to Didit, our identity partner. LocalinkGo keeps only the result.</p>
+        <p className="mt-6 flex items-center gap-1.5 text-xs text-ink-3"><Icon name="shieldCheck" className="size-4" /> Your ID photos and selfie go to Didit, our identity partner. LocalinkGo keeps the result, and the name, document type and country on your ID.{" "}
+          <a href={PRIVACY_IDENTITY_URL} target="_blank" rel="noreferrer" className="font-semibold text-brand hover:underline">How identity checks are handled</a></p>
       </Card>
     </div>
   );

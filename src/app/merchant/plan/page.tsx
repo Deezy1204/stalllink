@@ -7,7 +7,8 @@ import { useMerchant } from "@/components/merchant/MerchantData";
 import { NoShop } from "@/components/merchant/OrderBits";
 import { Badge, Button, Card, Input, Modal, PageHeader, Pill, Spinner, Switch, useConfirm, useToast } from "@/components/ui";
 import { paymentSummary } from "@/lib/catalog";
-import { earningsLine, PRO_DAYS, renewWithCredits, saveWalletSettings, startOnlinePlanPayment, startTrial, submitPlanPayment, watchShopPlanPayments } from "@/lib/money";
+import { earningsLine, planNarration, PRO_DAYS, renewWithCredits, saveWalletSettings, startOnlinePlanPayment, startTrial, submitPlanPayment, watchShopPlanPayments } from "@/lib/money";
+import { amountProblem, parseAmount, proofFileProblem, refProblem } from "@/lib/proofs";
 import {
   activeTrial,
   canTrial,
@@ -192,6 +193,7 @@ function BuyPlan({ plan, onClose }: { plan: Plan; onClose: () => void }) {
   const [file, setFile] = useState<File | null>(null);
   const [reference, setReference] = useState("");
   const [payer, setPayer] = useState(profile.name);
+  const [sent, setSent] = useState("");
   const [busy, setBusy] = useState(false);
   const [tried, setTried] = useState(false);
   if (!shop) return null;
@@ -203,6 +205,13 @@ function BuyPlan({ plan, onClose }: { plan: Plan; onClose: () => void }) {
   const until = paidUntil(shop);
   const left = until ? (until - Date.now()) / 864e5 : 0;
   const carry = current !== "basic" && current !== plan && left >= 1 ? Math.floor((left * priceOf(current, config)) / monthly) : null;
+  const narration = planNarration(plan, shop.id);
+  const err = {
+    file: proofFileProblem(file),
+    ref: refProblem(reference, [narration]),
+    amount: amountProblem(parseAmount(sent), price),
+    payer: payer.trim() ? null : "Enter the payer name",
+  };
 
   async function pay() {
     if (!method) return toast("Choose how to pay.", "error");
@@ -219,13 +228,13 @@ function BuyPlan({ plan, onClose }: { plan: Plan; onClose: () => void }) {
         toast(`${PLAN_LABEL[plan]} switches on as soon as your payment goes through.`);
       } else {
         setTried(true);
-        if (!file || !reference.trim() || !payer.trim() || !transfer) return;
-        await submitPlanPayment(user.uid, shop!, plan, months, price, transfer, file, reference.trim(), payer.trim());
+        if (Object.values(err).some(Boolean) || !transfer) return;
+        await submitPlanPayment(user.uid, shop!, plan, months, price, transfer, file!, reference.trim(), payer.trim(), parseAmount(sent)!);
         toast(`Proof sent. LocalinkGo switches ${PLAN_LABEL[plan]} on once it has checked your payment.`);
       }
       onClose();
     } catch (e) {
-      toast(`Could not pay: ${(e as Error).message}`, "error");
+      toast(`Not sent: ${(e as Error).message}`, "error");
     } finally {
       setBusy(false);
     }
@@ -273,16 +282,24 @@ function BuyPlan({ plan, onClose }: { plan: Plan; onClose: () => void }) {
           <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
             {transfer.accountNumber && (<><dt className="text-ink-3">Pay to</dt><dd className="font-semibold">{transfer.accountNumber}</dd></>)}
             {transfer.accountName && (<><dt className="text-ink-3">Account name</dt><dd>{transfer.accountName}</dd></>)}
-            <dt className="text-ink-3">Reference</dt><dd className="font-semibold">{plan.toUpperCase()}-{shop.id}</dd>
+            <dt className="text-ink-3">Reference</dt><dd className="font-semibold">{narration}</dd>
           </dl>
           {transfer.instructions && <p className="text-xs text-ink-3">{transfer.instructions}</p>}
           <label className="block text-sm">
             <span className="font-semibold">Proof of payment (photo or PDF)</span>
             <input type="file" accept="image/*,application/pdf" className="mt-1 block w-full text-sm" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
-            {tried && !file && <span className="text-xs text-red-700">Attach your proof of payment.</span>}
+            {tried && err.file && <span className="text-xs text-red-700">{err.file}</span>}
           </label>
-          <Input label="Transaction reference" value={reference} onChange={(e) => setReference(e.target.value)} error={tried && !reference.trim() ? "Enter the reference of your payment" : null} />
-          <Input label="Name the payment came from" value={payer} onChange={(e) => setPayer(e.target.value)} error={tried && !payer.trim() ? "Enter the payer name" : null} />
+          <Input
+            label="Transaction reference"
+            value={reference}
+            onChange={(e) => setReference(e.target.value)}
+            placeholder="e.g. MP241017.1234.A56789"
+            error={tried ? err.ref : null}
+            hint={`The one in your payment SMS or receipt (not ${narration}). Each reference can be used once.`}
+          />
+          <Input label="Amount sent" prefix="$" inputMode="decimal" value={sent} onChange={(e) => setSent(e.target.value)} placeholder={price.toFixed(2)} error={tried ? err.amount : null} />
+          <Input label="Name the payment came from" value={payer} onChange={(e) => setPayer(e.target.value)} error={tried ? err.payer : null} />
         </div>
       )}
     </Modal>

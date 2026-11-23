@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 import { useMerchant } from "@/components/merchant/MerchantData";
@@ -42,7 +43,15 @@ export default function MerchantOrders() {
 
   return (
     <>
-      <PageHeader title="Orders & vouchers" subtitle={`${shop.name} · tap an order to confirm its payment or see the details`} />
+      <PageHeader
+        title="Orders & vouchers"
+        subtitle={`${shop.name} · tap an order to confirm its payment or see the details`}
+        actions={
+          <Link href="/merchant/orders/new" className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-brand px-4 text-sm font-semibold text-white shadow-sm shadow-brand/20 hover:bg-brand-600">
+            + New order
+          </Link>
+        }
+      />
       <div className="mb-4 grid gap-3 md:grid-cols-[1fr_auto] md:items-center">
         <div className="flex gap-2">
           <div className="min-w-0 flex-1">
@@ -79,7 +88,7 @@ export default function MerchantOrders() {
       {list.length === 0 ? (
         <Empty
           title={q ? "No orders match" : tab === "open" ? "No vouchers waiting" : tab === "proof" ? "No payments to check" : "Nothing here yet"}
-          message={tab === "open" ? "When a buyer abroad orders from your shop, the voucher shows up here." : undefined}
+          message={tab === "open" ? "When a buyer abroad orders from your shop, the voucher shows up here. A customer phoned or came in? Take their order with New order." : undefined}
         />
       ) : (
         <div className="stagger grid gap-3 md:grid-cols-2 xl:grid-cols-3">

@@ -254,7 +254,38 @@ export interface OrderDoc {
   localinkLabel?: string;
   /** LocalinkGo has checked the charges against the shop's plan. */
   chargesChecked?: boolean;
+  /**
+   * The shop took this order for a customer who phoned or came in. The shop
+   * owner is `senderId`; `senderName` is the customer, who sees and pays it
+   * through `customerPhone` (digits).
+   */
+  placedBy?: "shop";
+  customerPhone?: string;
+  /** Proof of payment: SHA-256 of the file, the reference's claim key, what the payer says they sent, and who sent it. */
+  slipHash?: string;
+  paymentRefKey?: string;
+  amountSent?: number;
+  proofBy?: string;
+  /** What reached the account, entered by whoever confirmed the payment. */
+  receivedAmount?: number;
+  /** LocalinkGo's check of the proof (functions/src/proofs.ts). */
+  proofCheck?: ProofCheckDoc;
 }
+
+/** What LocalinkGo found in a proof of payment (it cannot see whether money arrived). */
+export interface ProofCheckDoc {
+  sha256?: string;
+  hashOk?: boolean;
+  sameFileAs?: { kind: "order" | "plan"; id: string }[];
+  notImage?: boolean;
+  small?: boolean;
+  wrongPlace?: boolean;
+  short?: boolean;
+  unreadable?: boolean;
+  checkedAt?: number;
+}
+
+export const placedByShop = (o: Pick<OrderDoc, "placedBy">) => o.placedBy === "shop";
 
 /** LocalinkGo's discount for customers who buy a lot: tiers on the basket (or the last 30 days). */
 export interface RewardsConfig {
@@ -350,6 +381,11 @@ export interface PlanPaymentDoc {
   status: "proofSent" | "approved" | "rejected";
   note?: string;
   createdAt: number;
+  slipHash?: string;
+  paymentRefKey?: string;
+  amountSent?: number;
+  receivedAmount?: number;
+  proofCheck?: ProofCheckDoc;
 }
 
 /** An in-app notification (also sent as a push message by the Cloud Functions). */

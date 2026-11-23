@@ -7,6 +7,7 @@ import { Suspense, useEffect, useState, type FormEvent } from "react";
 
 import { useAuth } from "@/components/AuthProvider";
 import { FullLogo } from "@/components/Brand";
+import { LegalLinks, PRIVACY_URL, TERMS_URL } from "@/components/Legal";
 import { Button, Card, Input, Spinner } from "@/components/ui";
 import { digitsOnly } from "@/lib/catalog";
 import { auth } from "@/lib/firebase";
@@ -132,6 +133,13 @@ function Login() {
           />
           {(error || authError) && <p className="animate-fade-in rounded-xl bg-red-50 px-3 py-2 text-sm text-red-800">{error ?? authError}</p>}
           {info && <p className="animate-fade-in rounded-xl bg-mint-100 px-3 py-2 text-sm text-mint-800">{info}</p>}
+          {mode === "signup" && (
+            <p className="text-xs text-ink-3">
+              By creating an account you agree to LocalinkGo&apos;s{" "}
+              <a href={TERMS_URL} target="_blank" rel="noreferrer" className="font-semibold text-brand hover:underline">Terms &amp; Conditions</a> and{" "}
+              <a href={PRIVACY_URL} target="_blank" rel="noreferrer" className="font-semibold text-brand hover:underline">Privacy Policy</a>, including how your data, identity check and payments are handled.
+            </p>
+          )}
           <Button type="submit" className="h-11 w-full" loading={busy || loading}>{mode === "signin" ? "Sign in" : "Create account"}</Button>
         </form>
         <div className="my-5 flex items-center gap-3 text-xs text-ink-3">
@@ -156,6 +164,7 @@ function Login() {
             Forgot password?
           </button>
         )}
+        <LegalLinks className="mt-5 justify-center" />
       </Card>
     </main>
   );

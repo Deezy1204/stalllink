@@ -386,6 +386,7 @@ export default function GuidePage() {
                 ["Shops", "/shops", "Verify new shops, remove verification, pause (hide from buyers) or restore, delete; see photos, payment details, hours, products, and every location (main shop and branches) on a map."],
                 ["Users", "/users", "Search accounts, suspend or restore them, make someone an admin."],
                 ["Orders", "/orders", "Every order with its payment status; open the buyer’s proof of payment."],
+                ["Payments to check", "/payments", "Transfers to LocalinkGo for orders and plans. Check each on LocalinkGo’s statement and type the amount that arrived to confirm; warnings show reused references or proof files and short payments."],
                 ["Shop requests", "/requests", "Shops buyers recommended; mark them contacted, onboarded or dismissed."],
                 ["Reviews", "/reviews", "Every review of a shop or of LocalinkGo; filter to low ratings, hide abusive reviews or delete them."],
                 ["Admins", "/admins", "Add admins by email (or invite an email that has no account yet), remove admins."],

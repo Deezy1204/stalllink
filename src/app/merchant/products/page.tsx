@@ -39,9 +39,14 @@ export default function ProductsPage() {
         title="Products"
         subtitle={`${shop.name} · ${list.length} of ${all.length} shown`}
         actions={
-          <Link href="/merchant/products/new" className="group inline-flex h-10 items-center gap-1.5 rounded-xl bg-brand px-4 text-sm font-semibold text-white shadow-sm shadow-brand/20 hover:bg-brand-600">
-            <Icon name="plus" className="size-4" strokeWidth={2.2} /> Add product
-          </Link>
+          <div className="flex flex-wrap gap-2">
+            <Link href="/merchant/products/bulk" className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-line bg-white px-4 text-sm font-semibold hover:bg-surface-2">
+              Bulk upload (Excel)
+            </Link>
+            <Link href="/merchant/products/new" className="group inline-flex h-10 items-center gap-1.5 rounded-xl bg-brand px-4 text-sm font-semibold text-white shadow-sm shadow-brand/20 hover:bg-brand-600">
+              <Icon name="plus" className="size-4" strokeWidth={2.2} /> Add product
+            </Link>
+          </div>
         }
       />
       {hiddenIds.size > 0 && (
@@ -57,8 +62,13 @@ export default function ProductsPage() {
       {list.length === 0 ? (
         <Empty
           title={all.length ? "No matches" : "No products yet"}
-          message={all.length ? "Try a different search or shelf." : "List your first item for buyers. Add each size you sell with its own price."}
-          action={!all.length && <Link href="/merchant/products/new" className="font-semibold text-brand hover:underline">+ Add product</Link>}
+          message={all.length ? "Try a different search or shelf." : "List your first item for buyers. Add each size you sell with its own price, or upload many at once from Excel."}
+          action={!all.length && (
+            <span className="flex gap-4">
+              <Link href="/merchant/products/new" className="font-semibold text-brand hover:underline">+ Add product</Link>
+              <Link href="/merchant/products/bulk" className="font-semibold text-brand hover:underline">Bulk upload</Link>
+            </span>
+          )}
         />
       ) : (
         <div className="stagger grid gap-3 md:grid-cols-2">

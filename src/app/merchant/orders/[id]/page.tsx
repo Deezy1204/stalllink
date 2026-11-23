@@ -11,7 +11,8 @@ import { PaymentCard, Timeline } from "@/components/merchant/OrderBits";
 import { Button, Card, Empty, Spinner, useToast } from "@/components/ui";
 import { dayMonthYear, digitsOnly, pickupPlace, relativeDay, timeOfDay } from "@/lib/catalog";
 import { download, receiptPdf } from "@/lib/reports";
-import { orderShare, orderTotal, paymentTitle, statusLabel, usd, viaLocalink } from "@/lib/types";
+import { passMessage } from "@/lib/shopOrders";
+import { orderShare, orderTotal, paymentTitle, placedByShop, statusLabel, usd, viaLocalink } from "@/lib/types";
 
 /** One order as the shop sees it (the app's order tracking screen in Merchant mode). */
 export default function MerchantOrderDetail() {
@@ -30,6 +31,9 @@ export default function MerchantOrderDetail() {
   const done = o.status === "collected";
   const place = pickupPlace(o, shop);
   const phone = digitsOnly(o.recipient?.phone ?? "");
+  // An order the shop took for a customer who phoned or came in.
+  const shopTook = placedByShop(o);
+  const customerPhone = digitsOnly(o.customerPhone ?? "");
 
   async function receipt(share: boolean) {
     setBusy(true);
@@ -73,6 +77,23 @@ export default function MerchantOrderDetail() {
 
       <div className="mt-4 grid gap-4 lg:grid-cols-5">
         <div className="space-y-4 lg:col-span-3">
+          {shopTook && (
+            <Card className="p-5">
+              <p className="font-bold">Taken by your shop for {o.senderName}</p>
+              <p className="text-sm text-ink-3">{o.customerPhone}</p>
+              <p className="mt-2 text-sm text-ink-2">
+                If {o.senderName.split(" ")[0]} has LocalinkGo with this number, the order and pass are in their app. Otherwise send them the pass: they need its voucher code or PIN to collect.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {customerPhone && o.status === "readyForPickup" && (
+                  <a href={`https://wa.me/${customerPhone}?text=${encodeURIComponent(passMessage(o, shop))}`} target="_blank" rel="noreferrer" className="inline-flex h-10 items-center rounded-xl bg-[#128C7E] px-4 text-sm font-semibold text-white hover:opacity-90">
+                    Send pass on WhatsApp
+                  </a>
+                )}
+                {o.status === "readyForPickup" && <span className="inline-flex h-10 items-center rounded-xl bg-surface-2 px-4 font-mono text-sm">PIN {o.pin}</span>}
+              </div>
+            </Card>
+          )}
           <PaymentCard order={o} shopName={shopName} />
 
           {o.status === "readyForPickup" && (
@@ -143,8 +164,9 @@ export default function MerchantOrderDetail() {
               )}
             </section>
             <section>
-              <p className="text-xs font-semibold uppercase tracking-wide text-ink-3">Paid by</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-ink-3">{shopTook ? "Customer (pays)" : "Paid by"}</p>
               <p className="mt-1 font-bold">{o.senderName}</p>
+              {shopTook && o.customerPhone && <p className="text-ink-2">{o.customerPhone}</p>}
               {o.senderCity && <p className="text-ink-2">{o.senderCity}</p>}
               {o.senderMessage && <p className="mt-1 rounded-xl bg-surface px-3 py-2 italic text-ink-2">“{o.senderMessage}”</p>}
             </section>
@@ -160,6 +182,11 @@ export default function MerchantOrderDetail() {
               </section>
             )}
           </Card>
+          {shop && active && shop.id === active.id && (
+            <Link href={`/merchant/orders/new?from=${encodeURIComponent(o.id)}`} className="flex h-10 items-center justify-center rounded-xl border border-line bg-white text-sm font-semibold hover:bg-surface-2">
+              Take this order again
+            </Link>
+          )}
           <div className="flex gap-2">
             <Button variant="secondary" className="flex-1" loading={busy} onClick={() => receipt(false)}>Download receipt</Button>
             <Button variant="secondary" className="flex-1" disabled={busy} onClick={() => receipt(true)}>Share</Button>

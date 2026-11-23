@@ -16,7 +16,7 @@ export const PAID_PLANS: Plan[] = ["standard", "pro", "max"];
 export const RANK: Record<Plan, number> = { basic: 0, standard: 1, pro: 2, max: 3 };
 export const PLAN_LABEL: Record<Plan, string> = { basic: "Basic", standard: "Standard", pro: "Pro", max: "Max" };
 export const PLAN_TAGLINE: Record<Plan, string> = {
-  basic: "Start selling for free",
+  basic: "(Selling for free) No monthly subscription",
   standard: "Lower fee, more products, shop offers",
   pro: "Take payments yourself, no fee",
   max: "For buying and selling in bulk",

@@ -8,6 +8,7 @@ import { useAdminData } from "./AdminData";
 import { useAuth } from "./AuthProvider";
 import { BrandHeader, BrandInline } from "./Brand";
 import { Icon, type IconName } from "./icons";
+import { LegalLinks } from "./Legal";
 
 export function Shell({ children }: { children: ReactNode }) {
   const path = usePathname();
@@ -63,6 +64,7 @@ export function Shell({ children }: { children: ReactNode }) {
         <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
           <Link href="/merchant" className="text-sm font-semibold text-ink-2 hover:underline">Merchant console</Link>
           <button onClick={signOut} className="text-sm font-semibold text-brand hover:underline">Sign out</button>
+          <LegalLinks className="mt-2" />
         </div>
       </div>
     </nav>
