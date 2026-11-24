@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 
 import { watchAdminData } from "@/lib/data";
+import { watchDeletionRequests, type DeletionDoc } from "@/lib/deletions";
 import { DEFAULT_CONFIG, watchAllPayouts, watchAllPlanPayments, watchPaymentsConfig } from "@/lib/money";
 import type { AdminDoc, InviteDoc, NominationDoc, OrderDoc, PaymentsConfig, PayoutDoc, PlanPaymentDoc, ReviewDoc, ShopDoc, UserDoc } from "@/lib/types";
 
@@ -17,12 +18,13 @@ interface AdminData {
   appReviews: ReviewDoc[];
   payouts: PayoutDoc[];
   planPayments: PlanPaymentDoc[];
+  deletions: DeletionDoc[];
   config: PaymentsConfig;
   loaded: boolean;
   error: string | null;
 }
 
-const empty: AdminData = { users: [], shops: [], orders: [], nominations: [], admins: [], invites: [], shopReviews: [], appReviews: [], payouts: [], planPayments: [], config: DEFAULT_CONFIG, loaded: false, error: null };
+const empty: AdminData = { users: [], shops: [], orders: [], nominations: [], admins: [], invites: [], shopReviews: [], appReviews: [], payouts: [], planPayments: [], deletions: [], config: DEFAULT_CONFIG, loaded: false, error: null };
 const Ctx = createContext<AdminData>(empty);
 
 /** Subscribes once to every collection the console needs; pages read from it. */
@@ -32,7 +34,12 @@ export function AdminDataProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const set = <K extends keyof AdminData>(key: K) => (v: AdminData[K]) => setData((d) => ({ ...d, [key]: v, loaded: true }));
     const fail = (e: Error) => setData((d) => ({ ...d, loaded: true, error: `Could not load data: ${e.message}. Make sure the latest firestore.rules are deployed.` }));
-    const money = [watchAllPayouts(set("payouts"), fail), watchAllPlanPayments(set("planPayments"), fail), watchPaymentsConfig(set("config"), fail)];
+    const money = [
+      watchAllPayouts(set("payouts"), fail),
+      watchAllPlanPayments(set("planPayments"), fail),
+      watchPaymentsConfig(set("config"), fail),
+      watchDeletionRequests(set("deletions"), fail),
+    ];
     const rest = watchAdminData(
       {
         users: set("users"),

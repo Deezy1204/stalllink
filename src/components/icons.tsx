@@ -151,6 +151,16 @@ const ICONS = {
       </>
     ),
   },
+  userMinus: {
+    anim: "ai-user",
+    body: (
+      <>
+        <C className="ai-head" cx="10" cy="8" r="4" />
+        <P d="M3 20.5v-.8a5 5 0 0 1 5-5h4a5 5 0 0 1 4 2" />
+        <P d="M16.5 19h5" />
+      </>
+    ),
+  },
   menu: {
     anim: "ai-menu",
     body: (

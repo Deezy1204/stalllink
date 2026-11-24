@@ -13,7 +13,7 @@ import { AccountFooter } from "./AccountFooter";
 export function Shell({ children }: { children: ReactNode }) {
   const path = usePathname();
   const { user, signOut } = useAuth();
-  const { shops, orders, nominations, shopReviews, appReviews, payouts, planPayments } = useAdminData();
+  const { shops, orders, nominations, shopReviews, appReviews, payouts, planPayments, deletions } = useAdminData();
   const [open, setOpen] = useState(false);
 
   const nav: { href: string; label: string; icon: IconName; count?: number }[] = [
@@ -33,6 +33,8 @@ export function Shell({ children }: { children: ReactNode }) {
     { href: "/requests", label: "Shop requests", icon: "plusSquare", count: nominations.filter((n) => n.status === "new").length },
     // Low ratings from the last week, so problems surface quickly.
     { href: "/reviews", label: "Reviews", icon: "star", count: [...shopReviews, ...appReviews].filter((r) => !r.hidden && r.rating <= 2 && Date.now() - r.updatedAt < 7 * 864e5).length },
+    // People who asked (in the app) for their account to be deleted; due within 30 days.
+    { href: "/deletions", label: "Account deletions", icon: "userMinus", count: deletions.filter((d) => d.status === "new").length },
     { href: "/admins", label: "Admins", icon: "shieldCheck" },
     { href: "/settings", label: "Settings", icon: "sparkles" },
     { href: "/guide", label: "How it works", icon: "book" },
