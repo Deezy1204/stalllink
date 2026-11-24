@@ -347,6 +347,8 @@ export interface LedgerDoc {
   createdAt: number;
   /** For a sale: the part LocalinkGo paid as the buyer's discount. */
   localinkDiscount?: number;
+  /** For a payout (and a returned one): which payout. */
+  payoutId?: string;
 }
 
 export interface PayoutDoc {
@@ -356,8 +358,13 @@ export interface PayoutDoc {
   amount: number;
   to?: PaymentOption;
   plan?: string;
-  /** The sales collected since the shop's previous payout (full price), and how much of that LocalinkGo paid as discounts. */
-  breakdown?: { orders: number; sales: number; localinkDiscount: number };
+  /**
+   * The sales collected since the shop's previous payout: how many, the
+   * shop's share (full price) and how much of that LocalinkGo paid as
+   * discounts. Since 2026-11-24 also what buyers paid, LocalinkGo's service
+   * fees and the orders (`detailed` when every order in it has them).
+   */
+  breakdown?: { orders: number; sales: number; localinkDiscount: number; serviceFees?: number; buyersPaid?: number; orderIds?: string[]; detailed?: boolean };
   status: "pending" | "paid" | "failed";
   reference?: string;
   note?: string;

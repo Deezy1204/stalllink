@@ -12,33 +12,8 @@ import { paymentSummary, relativeDay } from "@/lib/catalog";
 import { MIN_PAYOUT, nextPayoutAt, saveWalletSettings, watchLedger, watchShopPayouts } from "@/lib/money";
 import { paidPlan, PAYOUT_LABEL, payoutDays, PLAN_LABEL, planOf, priceOf } from "@/lib/plans";
 import { cents, paymentTitle, shortDate, usd, type LedgerDoc, type PayoutDoc } from "@/lib/types";
-
-/**
- * What a payout is made of: the sales collected since the previous payout at
- * their full price, the part of that LocalinkGo took off for buyers (and pays
- * itself), what buyers paid, and anything else that changed the balance.
- */
-function PayoutBreakdown({ payout: p }: { payout: PayoutDoc }) {
-  const b = p.breakdown;
-  if (!b) return <p className="mt-2 text-xs text-ink-3">Made before payouts listed their sales.</p>;
-  const other = cents(p.amount - b.sales);
-  const row = (label: string, value: string, strong = false, tone = "") => (
-    <div className={`flex justify-between gap-4 ${strong ? "border-t border-line pt-1.5 font-bold" : ""}`}>
-      <dt className="text-ink-2">{label}</dt>
-      <dd className={tone}>{value}</dd>
-    </div>
-  );
-  return (
-    <dl className="mt-3 space-y-1.5 rounded-xl bg-surface p-3 text-sm">
-      {row(`Purchased (${b.orders} order${b.orders === 1 ? "" : "s"})`, usd(b.sales))}
-      {row("Discounted by LocalinkGo", b.localinkDiscount ? `−${usd(b.localinkDiscount)}` : usd(0))}
-      {row("Buyers paid", usd(cents(b.sales - b.localinkDiscount)))}
-      {b.localinkDiscount > 0 && row("LocalinkGo pays the discount", `+${usd(b.localinkDiscount)}`, false, "text-mint-800")}
-      {Math.abs(other) >= 0.01 && row(other < 0 ? "Spent from earnings" : "Earlier earnings", `${other < 0 ? "−" : "+"}${usd(Math.abs(other))}`)}
-      {row("Paid to you", usd(p.amount), true)}
-    </dl>
-  );
-}
+import { PayoutFiguresView } from "@/components/PayoutFigures";
+import { payoutFigures } from "@/lib/payouts";
 
 const ledgerTitle: Record<string, string> = {
   sale_paid: "Sale paid, awaiting collection",
@@ -51,7 +26,7 @@ const ledgerTitle: Record<string, string> = {
 
 /** The active shop's money held by LocalinkGo: available and pending, payouts, and every change. */
 export default function EarningsPage() {
-  const { shop, user, loaded, wallet, profile, config } = useMerchant();
+  const { shop, user, loaded, wallet, profile, config, shopOrders } = useMerchant();
   const toast = useToast();
   const [ledger, setLedger] = useState<LedgerDoc[]>([]);
   const [payouts, setPayouts] = useState<PayoutDoc[]>([]);
@@ -66,6 +41,9 @@ export default function EarningsPage() {
 
   const plan = planOf(shop);
   const paid = paidPlan(shop);
+  // Payouts LocalinkGo has not sent yet: out of the balance, not paid out until an admin marks them paid.
+  const pendingPayouts = cents(payouts.filter((p) => p.status === "pending").reduce((s, p) => s + p.amount, 0));
+  const payoutById = new Map(payouts.map((p) => [p.id, p]));
   const schedule = PAYOUT_LABEL[plan];
   const w = wallet;
   const next = nextPayoutAt(plan);
@@ -90,11 +68,12 @@ export default function EarningsPage() {
         <p className="text-sm font-semibold text-white/70">Available to spend or pay out</p>
         <p className="mt-1 text-4xl font-extrabold">{usd(w?.balance ?? 0)}</p>
         <p className="mt-1 text-sm text-white/60">{line}</p>
-        <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-5">
           {[
+            ["Awaiting collection", w?.pending ?? 0, "Paid by buyers, not collected yet"],
+            ["Payout pending", pendingPayouts, "In a payout LocalinkGo has not sent yet"],
+            ["Paid out", w?.paidOut ?? 0, "Sent to you by LocalinkGo"],
             ["Earned, all time", w?.earned ?? 0, "Everything this shop has earned on LocalinkGo"],
-            ["Pending", w?.pending ?? 0, "Paid, not collected yet"],
-            ["Paid out", w?.paidOut ?? 0, ""],
             ["Spent", w?.spent ?? 0, "On plans and at other shops"],
           ].map(([label, v, hint]) => (
             <div key={label as string} className="rounded-xl bg-white/10 p-3" title={hint as string}>
@@ -168,9 +147,10 @@ export default function EarningsPage() {
                     ].filter(Boolean).join(" · ")}
                   </span>
                 </span>
-                <Badge tone={p.status === "paid" ? "success" : p.status === "failed" ? "danger" : "warning"}>{p.status === "paid" ? "Paid" : p.status === "failed" ? "Returned to balance" : "On its way"}</Badge>
+                <Badge tone={p.status === "paid" ? "success" : p.status === "failed" ? "danger" : "warning"}>{p.status === "paid" ? "Paid" : p.status === "failed" ? "Returned to balance" : "Pending"}</Badge>
               </summary>
-              <PayoutBreakdown payout={p} />
+              {p.status === "pending" && <p className="mt-2 text-xs text-amber-800">Pending: LocalinkGo has not sent this yet. It shows as paid, with the transaction reference, once it has.</p>}
+              <PayoutFiguresView payout={p} f={payoutFigures(p, payouts, shopOrders)} audience="shop" />
             </details>
           ))}
         </Card>
@@ -184,7 +164,11 @@ export default function EarningsPage() {
           {ledger.map((e) => (
             <div key={e.id} className="flex items-center gap-3 px-4 py-3 text-sm">
               <span className="min-w-0 flex-1">
-                <span className="block font-semibold">{ledgerTitle[e.type] ?? "Adjustment by LocalinkGo"}</span>
+                <span className="block font-semibold">
+                  {e.type === "payout" && e.payoutId && payoutById.get(e.payoutId)
+                    ? { pending: "Payout pending (not sent yet)", paid: "Payout sent", failed: "Payout could not be sent" }[payoutById.get(e.payoutId)!.status]
+                    : (ledgerTitle[e.type] ?? "Adjustment by LocalinkGo")}
+                </span>
                 <span className="block truncate text-xs text-ink-3">
                   {relativeDay(e.createdAt)}
                   {e.note ? ` · ${e.note}` : ""}
